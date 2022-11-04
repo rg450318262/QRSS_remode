@@ -1,0 +1,300 @@
+---
+title: "Quantitative Research Skills 2022, Hands-On Exercise 2"
+subtitle: "Factor Analysis"
+
+author: "Rong Guang"
+date: "27 Sep, 2022"
+
+output: 
+  html_document:
+    theme: flatly
+    highlight: haddock
+    toc: true
+    toc_depth: 2
+    number_section: false
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Hands-On Exercise 2: Factor Analysis
+
+We will start straight from the data set that you saved in the end of the **Hands-On-Exercise 1b** (or in the end of the **Assignment1**). In case you used a different name for the data, change it below:
+
+```{r}
+library(tidyverse)
+USHSv2  <-  read_csv("USHSv2.csv")
+USHSv2
+# re-create the gender variable as a factor (might be needed later)
+# and add the age variable, too, with proper levels (see codebook):
+USHSv2 %>% select(k1, k2) %>% head
+USHSv2  <-  USHSv2  %>% 
+  mutate(gender = k2  %>%  factor()  %>%  
+           fct_recode("Male" = "1", "Female" = "2"),
+         age = k1  %>%  factor()  %>%  
+           fct_recode("19-21" = "1", "22-24" = "2", "25-27" = "3", 
+                      "28-30" = "4", "31-33" = "5", "33+" = "6")
+         )
+
+USHSv2 %>% select(age,gender) %>% head
+```
+
+# Now, let us begin practising the Factor Analysis (FA)!
+
+We will need two more packages as we go. Install them as soon as you need them.
+
+I will give an example of the various phases of FA using the **General Health Questionnaire**:
+
+    k23:k34, # General Health Questionnaire (1-4, directions already OK)
+
+```{r}
+library(tidyverse)
+
+# For clarity, create a new subset of the data: 
+# take only those variables that are to be analysed with FA
+#
+# save the subset of the data with the name USHSghq ('general health questionnaire'):
+
+USHSghq  <-  USHSv2  %>% 
+  select(c(k23:k34))
+
+USHSghq
+```
+
+# Computing some univariate statistics and (bivariate) correlations
+
+Various ways provided by the psych package (that we will shortly use for FA, too):
+
+```{r}
+library(psych) # install.packages("psych")
+colnames(USHSghq)
+df <- data.frame(colnames(USHSghq))
+df <- df %>% mutate(index = 1:nrow(.))
+df
+
+df <- describe(USHSghq)
+df <- a %>% mutate(index = 1:nrow(.)) %>% select(index, everything())
+
+pairs.panels(USHSghq)
+
+lowerCor(USHSghq)
+
+cor.plot(USHSghq)
+```
+
+# Scree plot (estimating the number of factors)
+
+Usually, if we know at least something about the substantial theory behind the phenomenon, we have at least a good initial estimate (often a final one, too) for the number of factors, which is a crucial parameter in FA. 
+
+However, now we do not know too much about the phenomenon and its dimensions. So, one way is to look at so called Scree plot (it comes also from the psych package):
+
+```{r}
+library(psych)
+# Scree plot ("How many factors there could be?")
+fa.parallel(USHSghq, fa = "fa", fm = "ml")
+fa.parallel(USHSghq, fa = "fa", fm = "ml", plot = F) # result of parallel analysis
+
+```
+Here, the right number of factors seems to be something between 1 and 4.
+(Remember: we want to reduce the data - originally we have 12 variables.)
+
+# Factor analysis, two factors
+
+Let us begin with **TWO FACTORS** (that is quite typical also in practice).
+
+In passing, we will consider two different rotation methods, one orthogonal ("varimax"), one oblique ("oblimin"). There are others, too, but they are out of the scope of this course. These two are well enough.
+
+The general aim of the rotation is to find a **Simple Structure**, that would help to interpret the result: for each original variable, we hope to find a *high loading (correlation) for one factor*, and low loadings (correlations) for other factors. 
+
+It does not always go like that, as there might be **cross-loadings**: some variables that have correlations with several factors (thus making it more difficult to interpret).
+
+One more package is needed here for the factor rotations. Install it, too!
+NOTE: we have two options for the factor rotation: a) orthogonal, and b) oblique.
+
+```{r}
+library(GPArotation) # install.packages("GPArotation")
+
+# a) orthogonal rotation (i.e., factors will not correlate with each other):
+fa2a  <-  fa(USHSghq, nfactors = 2, rotate = "varimax", fm = "ml", scores = "regression")
+# Draw a diagram of the factor model (measurement model):
+p1 <- fa.diagram(fa2a, cut = 0, digits =3, main = "Factor Analysis, orthogonal rotation")
+
+# In the numerical output, focus on the factor loadings (columns ML1 and ML2).
+# They are the correlations between the factors and the original variables:
+# OBS: click "Show in New Window" to see all lines or Knit to a web page!
+print(fa2a, digits = 2, sort = T) # 2 digits is enough for correlations, and sorting is useful
+
+# b) oblique rotation: (i.e., factors may correlate with each other):
+fa2b  <-  fa(USHSghq, nfactors = 2, rotate = "oblimin", fm = "ml", scores = "regression")
+# Draw a diagram of the factor model (measurement model):
+p2 <- fa.diagram(fa2b, cut = 0, digits =3, main = "Factor Analysis, oblique rotation")
+
+# again, focus on the factor loadings: (and see OBS above)
+print(fa2b, digits = 2, sort = TRUE)
+
+library(patchwork)
+p1+p2
+```
+
+Study the factor loadings and the factor model diagrams in the two rotated factor solutions, a) and b). **What kind of differences can you see?**
+
+By different rotation method, Loadings on both factors has changed. The order of loading has changed in some of the indicators under ML2, whereas the order does not change in indicators under ML1. With orthogonal rotation, indicators with loading ＜0.3 via oblique rotation have seen a slight increase. Oblique rotation also gives the correlation (0.75) between ML1 and ML2, which Orthogonal doesn't. 
+
+
+Also pay some attention to the *communalities* (heading 'h2' in the output) of the variables: they are between 0 and 1; closer to 1 is a sign that the variable works better (less measurement errors and other random variation), while closer to 0 means that they do not have so much weight in the factor solution and interpretation. **Which variables have the highest communalities?**
+
+  K33 has the highest communalities (h2) with both rotation methods. 
+
+Look at the factor loadings in detail. Which of the original variables correlate mostly with the factors? **Could you interpret the factors? (see the questionnaire or codebook!)** Could you give the factors some (brief) names? Which result (a or b) is easier to interpret, what do you think?
+
+  Variables k33 and k29 are with highest loading for ML1 and ML2, respectively, irrespective of the rotation methods. For ML1, other variables with high loading (>0.6) are k32 and k31 irrespective of the rotation methods. For ML2, other variables with high loading (>0.6) are  k26, k23, k30 and k25 when oblique rotation is adopted; k30 and k26 (they are very close to 0.6) when orthogonal rotation is used. 
+
+  Since for ML1, the combination of high loading variables(k33, k32, k31) are the same between two rotation methods, I will define this factor as "emotional well-being"
+  For ML2, when orthogonal rotation is adopted, the high loading variables are k29, k30 and k26. I will define them as "activity/work engagement and mental well-being"(k26 about making decisions belong to mental well-being and k29 and k30 belong to engagement); when oblique rotation is used, the high loading variables switch to k29, k26, k23, k30 and k25, and they can still be defined as "activity/work engagement and mental well-being".
+  Considering the relation between ML1 and ML2, "emotional well-being" and "activity/work engagement and mental well-being" should certainly be correlated to some extent. Quite often, one can only engage in daily tasks and make good decisions when he has a good control of emotion. As such, oblique rotation which allows for the factors skewing toward each other would make better sense. 
+  Considering the high loading variables, I will not discuss ML1 since it has same variables included via both rotation methods. For ML2, oblique rotation gives more included variables (k23, k25), and the added variables are all meaningful dimensions (task concentration and productive role in task) for the factor we identified. As such, I would say in this regard oblique rotation gives a better solution.
+  Put together, I would argue that oblique rotation is a better choice in our case since it resembles the real-world situation and includes an exhaustive combination of relevant dimensions for factor "activity/work engagement and mental well-being". 
+
+**AT THIS STAGE, WE ARE ALMOST THERE... :)**
+
+
+# Let us review the steps taken so far! What does it require to do FA?
+
+First, preparing the data and the variables:
+
+1. Take a subset of the data, selecting a suitable set of variables for FA
+   - remember: variables for FA must be numerical measurements (not categorical)
+   - typical 1-5 scales are OK for FA (assuming that they represent some continuum
+     from a negative to positive, e.g., from disagree to agree - "Likert scales")
+
+2. Compute some univariate statistics and (bivariate) correlations
+   - you may also do some visualisations, of course (corrplot is good!)
+
+Then, proceeding towards the Factor Analysis:
+
+3. Draw a scree plot (for estimating the number of factors)
+   - if you have substantial theory that states the dimensions of the phenomenon,
+     trust that and you will know the right number without a scree plot
+   
+4. **The actual Factor Analysis**
+   - often good to start with a **2 factor solution**
+   - perhaps also check how a **3 factor solution** would look like (*)
+   - consider the different rotations (orthogonal or oblique?)
+   - try HARD to interpret some of the solutions and name the factors!
+
+(*) Note: if you have more than two factors, there will be also more work below: each distribution and each pair of scatter plots: "1 vs 2", "1 vs 3", "2 vs 3" (in 3 factor case) etc. The pairs.panels() function could be useful.
+
+**MOST OF THE TIME WILL BE SPENT IN STEP 4.**
+
+The final step will be quite easy if you succeed well in the steps 1-4:
+
+5. Reduce data based on FA, by working with the factor scores
+   - compute the factor scores based on the selected, interpreted solution
+   - rename the factor scores with more describing names, add fsd_id
+   - copy the factor scores back in the original data
+   - visualise the distributions of the factor scores
+   - study the factor scores with background or/and other variables
+
+So, let us proceed further, towards the end!
+
+# Working with the factor scores
+
+Hopefully you could give some names and interpretations for the factors, either in the case a) or b).
+
+Finally, it would be time to work with the **factor scores**, that is, the predicted values of each of the factor for each respondent in the data (these will be positive and negative numbers that have an average about zero). For interpreting the directions (negative/positive), see the factor loadings and the scales of the original variables.
+
+(The factor scores were already computed with the `scores = "regression"` option above, so no worries!)
+
+After this phase, we can continue the data analysis using the new factor score variables and forget about the original variables. **That's data reduction in action!**
+
+```{r}
+# Save the factor scores (based on two factors) to a new data set,
+# and add the fsd_id variable from the original data (USHSv2).
+#
+# I am using the oblique solution (b), but you may as well use the orthogonal solution a),
+# if you found an interpretation for that (in that case, change fa2b to fa2a below):
+
+# Also rename the factor scores here. DO YOU HAVE BETTER NAMES FOR THEM?
+# I hope so, as these ones are quite complicated and technical... on purpose) :)
+
+library(tidyverse)
+scores  <-  as.data.frame(factor.scores(USHSghq, fa2b)$scores)  %>% 
+  mutate(fsd_id = USHSv2$fsd_id)  %>% 
+  rename(EmoHealth = ML1,
+         MentHealth = ML2)
+
+View(scores) # look at the result (fsd_id and the new factor scores)
+```
+
+By the way: as you can see from the scores data, if any of the original variables have missing values (NA), the result (factor score) is also missing (NA).
+
+**Now, let us copy the renamed factor scores from the data 'scores' to our original data:**
+
+```{r}
+library(tidyverse)
+USHSv2  <-  left_join(USHSv2, scores)
+USHSv2 %>% head
+```
+
+# Visualising the factor scores:
+
+Let us see how the distributions of the factor scores look like. Also create their scatter plot.
+
+Update the names of the factor scores here, according to your own choices above. (I hope you use shorter names!)
+
+```{r}
+library(tidyverse)
+USHSv2  %>% 
+  ggplot(aes(x =EmoHealth)) +
+  geom_histogram()
+
+USHSv2  %>% 
+  ggplot(aes(x = MentHealth)) +
+  geom_histogram()
+
+USHSv2  %>% 
+  ggplot(aes(x = EmoHealth, y = MentHealth)) + 
+  geom_point()
+
+# try adding some colours based on some other variables etc.!
+USHSv2  %>% 
+  ggplot(aes(x = EmoHealth, y = MentHealth, colour = age)) + 
+  geom_point()
+
+USHSv2  %>% 
+  ggplot(aes(x = EmoHealth, y = MentHealth, colour = gender)) + 
+  geom_point()
+# (see the earlier exercises on how to do that in ggplot)
+# age and gender are already available - but how about some other (categorical) variables
+USHSv2 <- USHSv2 %>% mutate(BMI = weight/(height/100)^2) # adopting the formula of BMI
+USHSv2 %>% select(height, weight, BMI) %>% head # examine the data
+USHSv2 <- USHSv2 %>% mutate(BMI.factor = BMI %>%  #turn BMI into factor and add labels(underweight:<18.5,                                                   #normal weight: ~25, overweight: ~30; obese: >30)
+                    cut(breaks=c(1,18.5,25,30,100), include.lowest = T) %>% 
+                    fct_recode("Underweight" = "[1,18.5]",
+                               "Normal weight" = "(18.5,25]",
+                               "Overweight" = "(25,30]",
+                               "Obese" = "(30,100]") %>% 
+                    ff_label("BMI ranges"))
+USHSv2
+USHSv2  %>% 
+  ggplot(aes(x = EmoHealth, y = MentHealth, colour = BMI.factor)) + 
+  geom_point()
+USHSv2  %>% 
+  ggplot(aes(x = EmoHealth, y = BMI)) + 
+  geom_point()
+# (box plots might be interesting, too!)
+USHSv2  %>% 
+  ggplot(aes(x = BMI.factor, y = MentHealth)) + 
+  geom_boxplot()
+USHSv2  %>% 
+  ggplot(aes(x = BMI.factor, y = MentHealth)) + 
+  geom_boxplot()
+USHSv2  %>% 
+  ggplot(aes(x = age, y = MentHealth)) + 
+  geom_boxplot()
+```
+
+You have now completed the **Hands-On Exercise 2**. *GOOD JOB!*
+
+That makes you ready for **Assignment 2**. Open it, complete it, knit it to HTML format and submit the result (HTML file) in Moodle. **You can do it!**
+</pre></body></html>_text/x-markdownUUTF-8__https://moodle.helsinki.fi/pluginfile.php/4450750/mod_resource/content/6/Hands-On-Exercise2.Rmd

@@ -1,0 +1,551 @@
+---
+title: "Quantitative Research Skills 2022, Hands-On Exercise 1b"
+subtitle: "Getting familiar with the USHS data"
+
+author: "Write your name here"
+date: "Write the date here"
+
+output: 
+  html_document:
+    theme: flatly
+    highlight: haddock
+    toc: true
+    toc_depth: 2
+    number_section: false
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Hands-On Exercise 1b: Getting familiar with the USHS data
+
+*******************************************************************************
+
+**NOTE:** Did you already complete **Hands-On Exercise 1a**? GOOD!
+
+*******************************************************************************
+
+Look at the **USHS (University Student Health Survey)** materials in Moodle:
+the questionnaire, the general report, the codebook, and the label descriptions.
+
+**Download the data file (in CSV format) to your computer, in your QRS folder.**
+
+You should be able to open the data as follows (do not change its filename):
+
+```{r}
+library(tidyverse)
+
+# "csv2" version of the function below uses ';' as the delimiter instead of the comma ','.
+# NOTE! Use read_csv2(), NOT read.csv2() !
+
+# You should be in your QRS Project Directory (see Files pane on the right).
+# Can you see the data file (daF3224e.csv) there?
+
+USHS <-  read_csv2("daF3224e.csv")
+
+View(USHS) # browse the contents of the data
+
+# The data USHS should have 3110 rows (observations) and 548 columns (variables).
+
+```
+
+# Some notes by Kimmo
+
+*We will discuss the data together on the 3rd week of the course.*
+
+Many of the 548 variables do not carry much information (or they might be a bit difficult to analyse). It may be easier on this course just to remove a large part of the data (in other words, to select only a subset of the variables for further investigations).
+
+Here is a selection that I have made, by studying the data, the codebook and the questionnaire. I encourage you to study my selection and modify it to your own needs (or, just use it, you do not have to modify it).
+
+I have given a brief explanation of each variable below. Consult the codebook and questionnaire for more details.
+
+```{r}
+USHSpart  <-  USHS  %>% 
+  select(
+    fsd_id,
+    k1, # age
+    k2, # gender (1=male, 2=female, 3=not known/unspecified), NA (missing)
+    bv1, # university (from register), see label info! (40 different codes)
+    bv3, # field of study (from register), various codes
+    bv6, # higher educ institution (0=uni applied sciences, 1=university)
+    k7, # learning disability
+    k8_1:k8_4, # current well-being
+    k9_1:k9_30, # symptoms (past month), skip 31 ("other") due missingness
+    k11a, k11b, # height (cm) a=male, b=female
+    k12a, k12b, # weight (kg) a=male, b=female
+    k13, # what to you think of your weight? (1=under,5=over)
+    k14:k20, # various questions (mostly yes/no)
+    k21_1:k21_9, # various things in life (obs: originally wrong scale! "3" -&gt; NA!)
+    k22_1:k22_10, # how often (felt various things) (obs: 2 &amp; 3 should be inversed! see quest.)
+    k23:k34, # General Health Questionnaire (1-4, directions already OK)
+    k38_1:k38_8, # used a mobile app related to health/wellness (0-4) (k38_9=other skipped)
+    k39_1:k39_22, # like to get help for various matters (0/1) (k39_23=other skipped)
+    k40, # minutes of daily incidental exercise (0=&lt;15min, 1=15-30min, 2=30-60min, 3=1hr+)
+    k41, # how often engage in physical exercise (0=not at all,5=daily)
+    k44, # taking health factors into account, when buying food (0=never,2=often)
+    k45, # how often eat lunch in student restaurant/week (1=5 days,2=3-4,3=1-2,4=less freq.)
+    k46_1:k46_11, # on how many days/week eat various food/(11)skip lunch (0,...,7=every day)
+    k56, # how often brush your teeth (1=less than once/day,2=once/day,3=more than once/day)
+    k57, # do you use tooth paste (1=less than once/day,2=once/day,3=more than once/day)
+    k58, # do you floss teeth (0=not at all,1=occassionally,2=2-3/week,3=daily)
+    k66, # dental care is scary? (0=not at all,1=somewhat,2=very much)
+    k67_1:k67_5, # use of intoxicants (tobacco, alcohol, cannabis,...) (0-3, 4=can't say!)
+    k68_1:k68_4, # use of tobacco products (1=not at all,...,5=daily)
+    k69_1:k69_2, # electronic cigarettes (1=not at all,...,4=daily) (_3: other, skipped)
+    k74, # how often beer/wine/other? (0=never,...,4=4+ times/week)
+    k89_1, # how many years studied? (1=under 3 years,2=3-6 years,3=over 6 years)
+    k90_1, # how many credits so far? (in total)
+    k91, # goals and success (1=more successful than expected,3=less than expected)
+    k92, # is the field of study right for you (0=no,1=yes,2=can't say)
+    k93, # advice and counselling (0=definitely insufficient,1=somewhat,...,4=very good)
+    k95_1:k95_18, # feelings of studies (1:disagree,6:agree)
+    k97_1:k97_2, # internet use in a week (in hours), study/work vs other things
+    k105_1:k105_3, # estimate financial situation (0=no,1=yes,2=can't say)
+    k106, # household (1 to 7, various choices)
+    k107, # how often meet friends (0=less often than once a month,...,4=almost daily)
+    k109, # can you discuss your problems (0=never,1=rarely,2=sometimes,3=often)
+    k110, # do you feel lonely? (0=no,1=yes, at times,2=yes,often)
+    k111, # couple relationship (0=no,1=yes in one, 2=yes,two or more)
+    k124 # planning on having children (various options)
+   ) # (end of select!)
+
+View(USHSpart) # now only 179 variables (but still all 3110 observations)
+
+```
+
+# Some more notes by Kimmo
+
+I will give you a bit more code as an example here. Remember that you have all the codes of the RHDS chapters, and you can copy-paste and modify any of those codes according to your needs. 
+
+**Please try bravely, and don't be afraid of errors! We can always learn from errors and mistakes.**
+
+Some variables above will still need some *wrangling* before they can be nicely plotted or analysed.
+
+I give some examples below.
+
+Here is an example with the height, weight, and gender of the respondents:
+
+```{r}
+# Some examples of wrangling and visualising the USHS data:
+
+# Let us look at these variables that have been recorded separately for male and female participants:
+# k11a, k11b, # height (cm) a=male, b=female
+# k12a, k12b, # weight (kg) a=male, b=female
+# and let us also take the gender variable k2 and change it to a factor with proper levels:
+
+# we also give better, more descriptive names for the new variables:
+
+USHSv2  <-  USHSpart  %>% 
+  mutate(height = if_else(is.na(k11a), k11b, k11a),
+         weight = if_else(is.na(k12a), k12b, k12a),
+         gender = k2  %>%  factor()  %>%  fct_recode("Male" = "1",
+                                                 "Female" = "2",
+                                                 "Not known" = "3")
+         )
+view(USHS)
+
+View(USHSv2) # look at the end of the new data, the new variables appear there!
+
+# check the numerical summaries of the new variables:
+USHSv2  %>% 
+  select(height, weight, gender)  %>% 
+  summary()
+```
+# scatter plot of height and weight:
+```{r}
+ggplot(data = USHSv2, aes(x = height, y = weight)) +
+  geom_point()
+```
+```{r}
+# add some more information in the plot:
+ggplot(data = USHSv2, aes(x = height, y = weight, colour = gender)) + 
+  geom_point(shape = 1) +
+  geom_jitter(shape = 1)
+```
+
+
+Here is another example, a typical case of creating new variables as means of existing ones.
+
+Let us look at these 9 variables (or items):
+
+     k21_1:k21_9, # various things in life (obs: originally wrong scale! "3" -> NA!)
+
+First of all, there is a problem: "Difficult to say" has been coded as "3", which would mean "VERY much pleasure etc." (see the questionnaire!). Hence, the values of "3" must be recoded to NA (missing). After that, the scale is a regular 5 point scale, with numbers -2, -1, 0, 1, 2 (just shifted around zero).
+
+```{r}
+# let us continue with the USHSv2 dataset that we created above
+
+# change the values of 3 to NA (see above!)
+
+# select all these and then press Ctrl+Enter (Cmd+Enter)!
+
+USHSv2$k21_1[USHSv2$k21_1 == 3]  <-  NA
+USHSv2$k21_2[USHSv2$k21_2 == 3]  <-  NA
+USHSv2$k21_3[USHSv2$k21_3 == 3]  <-  NA
+USHSv2$k21_4[USHSv2$k21_4 == 3]  <-  NA
+USHSv2$k21_5[USHSv2$k21_5 == 3]  <-  NA
+USHSv2$k21_6[USHSv2$k21_6 == 3]  <-  NA
+USHSv2$k21_7[USHSv2$k21_7 == 3]  <-  NA
+USHSv2$k21_8[USHSv2$k21_8 == 3]  <-  NA
+USHSv2$k21_9[USHSv2$k21_9 == 3]  <-  NA
+
+
+# create one new variable, the mean of the 9 items:
+# (the na.rm option is needed, because we have now values that are missing)
+
+# we save the new variables in the same data, that is why we have the data name twice here:
+USHSv2  <-  USHSv2  %>% 
+  mutate(k21mean = rowMeans(across(c(k21_1:k21_9)), na.rm = TRUE))
+USHSv2
+
+USHSv2  %>% 
+  select(k21mean)  %>% 
+  summary()
+
+USHSv2  %>% 
+  select(k21mean)  %>% 
+  ggplot(aes(x = k21mean)) + 
+  geom_histogram(binwidth = 0.5)
+
+# continue with the k21 measure:
+# try to create TWO new variables, by choosing only suitable original items for them,
+# based on their contents, and giving a descriptive name for the new mean variables!
+# then, plot each of them (e.g. histogram or box plot) and create a scatter plot, too.
+
+USHSv2  <-  USHSv2  %>% 
+  mutate(k21_study = rowMeans(across(k21_1:k21_9), na.rm = TRUE))
+
+USHSv2  <-  USHSv2  %>% 
+  mutate(k21_communication = rowMeans(across(c(k21_3, k21_4, k21_6)), na.rm = TRUE))
+
+USHSv2 %>% select(k21_3, k21_4, k21_6, k21_communication,gender) %>% View 
+         
+view(USHSv2)
+
+last_cols <- USHSv2[,180:186]
+view(last_cols)
+
+
+p1 <- USHSv2  %>% 
+  select(k21_study)  %>% 
+  ggplot(aes(x = k21_study)) + 
+  geom_histogram()
+
+p2 <- USHSv2  %>% 
+  select(k21_communication)  %>% 
+  ggplot(aes(x = k21_communication)) + 
+  geom_histogram()
+
+USHSv2 %>% ggplot(aes(x = k21_study, y = k21_communication, colour = gender))+
+  geom_point() +
+  geom_jitter()
+
+library(patchwork)
+p1|p2
+
+
+```
+
+Another measure that needs some wrangling:
+
+     k22_1:k22_10, # how often (felt various things) (obs: 2 &amp; 3 should be inversed! see quest.)
+
+(See questionnaire!) The values are from 0 (not at all) to 4 (most/all the time), but the
+items 2 and 3 are **negatively worded**, so their values should be inversed before making
+calculations (means etc.). Otherwise the interpretation of the mean variable will be impossible,
+as its contents would be mixed.
+
+When making means or sums like this, it is important that the values of the items are going in the 
+"same direction" with each other (e.g. from negative to positive).
+
+```{r}
+USHSv2  %>% 
+  select(k22_2, k22_3)  %>% 
+  summary() # copy and save the result somewhere to compare it below!
+
+# recode the values (NAs will remain as NAs),
+# save the result to a new variable (k22_2inv):
+USHSv2  <-  USHSv2  %>% 
+  mutate(
+    k22_2inv = 
+      case_when(
+      k22_2 == 0 ~ 4,
+      k22_2 == 1 ~ 3,
+      k22_2 == 2 ~ 2,
+      k22_2 == 3 ~ 1,
+      k22_2 == 4 ~ 0
+      )
+  )
+# do the same for k22_3 and then check their summaries!
+USHSv2 <- USHSv2 %>% 
+  mutate(k22_3inv = case_when(k22_3 == 0 ~ 4,
+                           k22_3 == 1 ~ 3,
+                           k22_3 == 2 ~ 2,
+                           k22_3 == 3 ~ 1,
+                           k22_3 == 4 ~ 0
+                           )
+         )
+
+USHSv2 %>% select(k22_3, k22_3inv) %>% summary()
+
+
+
+
+
+
+```
+
+After that, you can create one or more mean variables of the k22 measure!
+
+NOTE: instead of copying the syntax used earlier with k21:
+
+    mutate(k21mean = rowMeans(across(k21_1:k21_9), na.rm = TRUE))
+
+you have to use a bit more complicated one: (here is the code for only one mean variable)
+
+    mutate(k22mean = rowMeans(across(c(k22_1,k22_2inv,k22_3inv,k22_4:k22_10)), na.rm = TRUE))
+
+Note that by using the code above, we will skip the original items k22_2 and k22_3 that have a wrong direction.
+
+*Later on, we will analyse these in more detail (and more flexibly) with factor analysis.*
+
+Use the USHSv2 data created above or create a new copy of the data with a different name.
+
+```{r}
+# create the k22mean variable here:
+
+USHSv2 <- USHSv2 %>% 
+  mutate(k22mean = rowMeans(across(c(k22_1, k22_2inv, k22_3inv, k22_4:k22_10), na.rm = T))) 
+
+USHSv2 %>% select (k22_1:k22_10, k22mean) %>% head
+USHSv2 
+
+# then, look at its summary and make a histogram, for example (or/and, use some categorical variable
+USHSv2 %>% select(k22mean) %>% summary()
+
+USHSv2 %>% ggplot(aes(x = k22mean)) +
+  geom_histogram() 
+
+# with it to create a box plot!) - or, how about a scatter plot of k21mean and k22mean?
+
+USHSv2 %>% filter(!gender == is.na(NA)) %>% 
+ggplot(aes(x = gender, y = k22mean)) +
+  geom_boxplot()+
+  geom_point(shape =1, alpha =0.2)+
+  geom_jitter(shape =1, alpha =0.2)
+
+USHSv2 %>% ggplot(aes(x = k21mean, y = k22mean)) +
+  geom_point (shape =1, alpha = 0.2) +
+  geom_jitter()
+
+library(finalfit)
+
+USHSv2$height %>% summary()
+
+USHSv2 <- USHSv2 %>% 
+  mutate(height.factor = 
+           height %>% 
+    cut(breaks = c(154, 175, 185, 191), include.lowest = T) %>% 
+      fct_recode("low height" = "[154,175]",
+                 "middle height" = "(175,185]",
+                 "high height" = "(185,191]") %>% 
+      ff_label("height(Low/Middle/Hight)")
+  )
+
+
+USHSv2 %>% select(height, height.factor) %>% head()
+
+USHSv2 %>% filter(!is.na(height.factor)) %>% 
+  ggplot(aes(x = height.factor, y = k22mean, colour = gender)) +
+  geom_boxplot(shape = 2, size = 0.5) +
+  geom_jitter(shape = 1, size = 0.5, alpha = 0.3)+
+  labs(x = "Height-three categories",
+       y = "mean for items in 22") +
+  theme(legend.position = c(0.92,0.88))
+
+#a scatter plot of k21mean and k22mean
+
+USHSv2 %>% filter(!is.na(gender)) %>% 
+  filter(!is.na(height.factor)) %>% 
+  ggplot(aes(x = k22mean, y = k21mean, colour = gender)) +
+  geom_jitter() +
+  expand_limits(x = c(-0.5,4))+
+  facet_wrap(~height.factor)+
+  theme(legend.position = "bottom")
+
+# (or some other means of k21 and k22, not just these total means?)
+#22_1,5,8,9 are about mood
+USHSv2 <- USHSv2 %>% mutate (k22_mood = rowMeans(across(c(k22_1, k22_5, k22_8, k22_9), rm.na = T)))
+USHSv2 %>% select(k22_1, k22_5, k22_8, k22_9, k22_mood) %>% head
+
+USHSv2 %>% ggplot(aes(x = k22_mood, y = k21_communication, colour = gender)) +
+  geom_jitter()
+# Is the mean of k22 closer to the original value "Only occassionally" or "Sometimes" or "Often"?
+# (compare with the questionnaire or codebook)
+
+#Generate a new variable BMI
+USHSv2 %>% select(height, weight) %>% head
+
+USHSv2 <- USHSv2 %>% mutate(BMI = weight/(height/100)^2)
+USHSv2 %>% select(height, weight, BMI) %>% head
+USHSv2 <- USHSv2 %>% mutate(BMI.factor = BMI %>% 
+                    cut(breaks=c(1,18.5,25,30,100), include.lowest = T) %>% 
+                    fct_recode("Underweight" = "[1,18.5]",
+                               "Normal weight" = "(18.5,25]",
+                               "Overweight" = "(25,30]",
+                               "Obese" = "(30,100]") %>% 
+                    ff_label("BMI ranges"))
+
+USHSv2 %>% select(height, weight, BMI, BMI.factor, gender, k21mean, k22mean, k21_study, k21_communication, k22_mood) %>% head 
+
+USHSv2 %>% filter (!is.na(gender), !is.na(BMI.factor)) %>% 
+  ggplot(aes(x = BMI.factor, y = k22_mood, fill = gender))+
+  geom_boxplot()
+
+USHSv2 %>% filter (!is.na(gender), !is.na(BMI.factor)) %>% 
+  ggplot(aes(x = k22_mood)) +
+  geom_histogram()+
+  facet_grid(BMI.factor~gender)
+
+t1 <- USHSv2 %>% 
+  summary_factorlist(dependent = "k22_mood", 
+                     explanatory = c("gender", "BMI.factor"), 
+                     cont_nonpara = c(1,2), 
+                     p = T)
+t1
+  knitr::kable(t1, align =c("l", "l", "r", "r", "r"))
+?summary_factorlist
+```
+
+```{r}
+USHSv2 %>% select(k22mean) %>% glimpse
+
+USHSv2 <- USHSv2 %>% mutate(k22mean_distancefrom0 = abs(k22mean - 0), k22mean_distancefrom1 = abs(k22mean - 1), k22mean_distancefrom2 = abs(k22mean - 2), k22mean_distancefrom3 = abs(k22mean - 3), k22mean_distancefrom4 = abs(k22mean - 4))
+USHSv2
+
+compare <- USHSv2 %>% select(fsd_id, gender, height.factor, contains("k22mean")) %>% view
+
+USHSv2longer <- compare %>% pivot_longer(contains("k22mean_"))
+head(USHSv2longer)
+
+MeanClose <- USHSv2longer %>% group_by(fsd_id) %>% 
+  filter(value == min(value)) %>% 
+  mutate(close = str_sub(name, -1,-1)) 
+MeanClose
+
+MeanClose <- MeanClose %>% 
+  mutate (close.factor = close %>% 
+            fct_recode("Not at all" = "0",
+                       "Only occasionally" = "1",
+                       "Sometimes" = "2",
+                       "Often" = "3",
+                       "Most of the time" = "4"
+                       ) %>% 
+            ff_label("close to which state"))
+
+p1 <- MeanClose %>% filter(!is.na(gender)) %>% 
+  ggplot(aes(x = gender, fill = close.factor)) +
+  geom_bar(position = "fill")+
+  theme(legend.position = "none")+
+  ylab("percent")+
+  ggtitle("average of item 22's proximation to code by gender")
+p2 <-  MeanClose %>% filter(!is.na(gender)) %>% 
+  ggplot(aes(x = gender, fill = close.factor)) +
+  geom_bar()
+
+p1+p2
+
+```
+
+
+
+You can now also work with this well-known measure:
+    
+    k23:k34, # General Health Questionnaire (1-4, directions already OK)
+
+This is an essential measure of the Health Survey. Do something similar with it!
+# it is up to you...
+
+```{r}
+items that need to be reversed: 23,25,26,29,30, 34
+USHSv2 %>% select(k23:k34) %>% head
+
+USHSv2 <- USHSv2 %>% mutate(k23inv = 5-k23, k25inv = 5-k25, k26inv = 5-k26, k29inv = 5-k29, k30inv = 5-k30, k34inv = 5-k34)
+
+USHSv2 %>% select(k23, k25, k26, k29, k30, k34, k23inv:k34inv) %>% head
+
+USHSv2 <- USHSv2 %>% mutate(Health = rowMeans(
+  across(
+    c(k23inv, k24, k25inv, k26inv, k27, k28, k29inv, k30inv, k31, k32, k33, k34inv)
+    )
+  )
+  )
+USHSv2 %>% select(Health, k23inv, k24, k25inv, k26inv, k27, k28, k29inv, k30inv, k31, k32, k33, k34inv) %>% head
+
+USHSv2 %>% filter (!is.na(gender), !is.na(BMI.factor)) %>% 
+  ggplot(aes(x = Health)) +
+  geom_histogram()+
+  facet_grid(BMI.factor~gender)
+
+t2 <- USHSv2 %>% filter(!is.na(Health)) %>% 
+  summary_factorlist(dependent = "Health", explanatory = c("gender"," BMI.factor"), p = T)
+t2
+knitr::kable(t2, align=c("l","l","l","r","r"))
+
+USHSv2 %>% filter(!is.na(Health)) %>% 
+  summary_factorlist(dependent = "BMI.factor", explanatory = "gender", p = T, p_cat = "chisq")
+
+
+```
+```{r}
+write_csv(USHSv2, "USHSv2.csv")
+```
+
+# Exploring more of the USHS data
+
+Now it is your time to continue: present some plots (box plots, histograms etc.) that you have learned earlier with the RHDS chapters, now using (a subset of) the USHS data.
+
+And make some summaries of the data, filter it in various ways, etc. Use categorical variables (there are many possible variables) for grouping the output.
+
+You could do a t-test, too, or analysis of variance, to compare means of some respondent groups.
+
+**It is important that you familiarize yourself with the USHS data, as we will use the data during the rest of the weeks on this course, including the (final) Assignment 5.**
+
+*Hence, remember to actively write your own notes here about the variables that you find interesting!*
+
+Add new R code chunks by copy-pasting (or by clicking the green "C" above + selecting "R") - here's the first one for you:
+
+```{r}
+
+```
+
+*******************************************************************************
+
+**FINAL STEP of the exercise**
+
+When you have explored the USHS data enough, SAVE the data set in a CSV file. 
+This will make it easier to use the subset of the USHS data you have been working with so far. 
+Also your new variables will all be there for future access, without a need to re-create them. 
+
+So, this is what you should do as the last step of this exercise:
+
+**NOTE:** use the data you have been working with (change the "USHSv2" below to that one, if necessary!)
+```{r}
+write_csv(USHSv2, "USHSv2.csv") # write the selected data into a CSV file
+```
+(We will begin the next week's exercise very easily by reading in that file!)
+
+*******************************************************************************
+
+*******************************************************************************
+
+You have now completed the **Hands-On Exercise 1b**. *GOOD JOB!*
+
+You should be ready to download and work through **Assignment 1**. Fantastic!
+
+It is a good idea to keep *all the Hands-On-Exercise files (0,1a,1b)* open too, while you are working with the Assignment 1. (You may open several tabs at the same time in the RStudio Editor.)
+
+</pre></body></html>_text/x-markdownUUTF-8_`https://moodle.helsinki.fi/pluginfile.php/4433759/mod_resource/content/3/Hands-On-Exercise1b.Rmd
+
+*******************************************************************************
+

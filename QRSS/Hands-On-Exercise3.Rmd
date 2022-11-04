@@ -1,0 +1,997 @@
+---
+title: "Quantitative Research Skills 2022, Hands-On Exercise 3"
+subtitle: "Linear Regression"
+
+author: "Rong Guang"
+date: "03102022"
+
+output: 
+  html_document:
+    theme: flatly
+    highlight: haddock
+    toc: true
+    toc_depth: 2
+    number_section: false
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Hands-On Exercise 3: Linear Regression
+
+The aim is to learn the basic skills related to the linear regression. 
+
+Begin studying (a part of) the Chapter 7 of the RHDS book (sections 7.1 and 7.2), and then apply those techniques with the USHS data. **Note:** sections 7.3, 7.4 and 7.5 are skipped on this course.
+
+Skim-reading the Chapters 3 and 4 of the MABS book (PDF in Moodle) might also support your learning.
+
+# RHDS Chapter 7: Linear Regression
+
+Please begin 'active reading' from here:
+https://argoshare.is.ed.ac.uk/healthyr_book/chap07-h1.html
+
+## 7.1 Regression
+
+Read the section to get familiar with the basic idea and core concepts of the linear regression:
+
+- *dependent/response/outcome* variable (y), always continuous
+- *explanatory variable/predictor* (x), continuous or categorical
+
+- univariable (simple) regression: only one x
+- multivariable (multiple) regression: more than one x (x1, x2, ...)
+
+
+### 7.1.1 The Question (1)
+
+Work through the example of blood pressure (y) and coffee consumption (x) depicted in Figure 7.1:
+
+- A: simple regression - the fundamental starting point!
+- B: multiple regression - more on this later, in subsection 7.1.4
+
+**Note**: in the scatter plot, the response variable is drawn on the vertical (y) axis, and the explanatory variable on the horizontal (x) axis.
+
+
+### 7.1.2 Fitting a regression line
+
+This task can be thought of as drawing a straight line ("regression line") through data points.
+
+The distance (in the direction of the y axis) from each observed point to the line is called a *residual*. For a good fit, the residuals should be as small as possible.
+
+Use the *Simple linear regression app* to explore fitting a regression line. Try to find values for the slope (the steepness of the line) and intercept (the predicted value for y when x = 0) that minimize the sum of the squared residuals from the linear model.
+
+*Simple linear regression app:* 
+https://argoshare.is.ed.ac.uk/simple_regression
+
+See also the explanations in Figure 7.2 (A,B,C).
+
+
+### 7.1.3 When the line fits well
+
+Main assumptions of linear regression model:
+1. Linear relationship between predictors and outcome
+2. Independence of residuals 
+3. Normal distribution of residuals
+4. Equal variance of residuals
+
+For details, see the text of this subsection.
+
+Use the *Simple linear regression diagnostics app* to explore diagnosing a linear regression model.
+
+Go through the various cases of different trends provided in the app:
+
+- Linear up
+- Linear down
+- Curved up
+- Curved down
+- Fan-shaped
+
+and study in each case *whether or not the linear model is an appropriate fit to the data*, based on the scatter plot and the diagnostic plots. See the four assumptions listed above!
+
+*Simple linear regression diagnostics app*: 
+https://argoshare.is.ed.ac.uk/simple_regression_diagnostics
+
+See also the explanations in Figure 7.3 (A,B).
+
+
+### 7.1.4 The fitted line and the linear equation
+
+### Kimmo's notes:
+
+The RHDS book gives the linear regression equation in the following form:
+
+$$\hat{y} = \beta_0 + \beta_1 x_1 + \beta_2 x_2$$ 
+
+We are interested in estimating the *regression coefficients* ($\beta$) for the predictors (including the constant or intercept that is a part of the model, although it usually has only a minor role).
+
+There is a null hypothesis for each of the regression coefficients: it claims that the particular coefficient is equal to *zero* (which would lead to a clear conclusion: that predictor is not needed in the model, as it would have a zero effect to the response). Those hypotheses are tested with a t-test. In case of a significant p-value (less than 0.05), our conclusion is that we need that predictor in the model. Otherwise, we can/should remove it.
+
+Read this subsection carefully and use the *Multiple linear regression app* to work through the example of blood pressure (y), coffee consumption (x1) and smoking (x2).
+
+More detailed instructions for using the app (adviced by Kimmo) - link to app is below these:
+- Choose *Simple regression* (the default option in the menu), do not change that yet...
+
+- Set the True values as follows: intercept = 1, coffee drinking = 1, smoking = 0
+- Let the True interaction between coffee drinking and smoking to be 0
+- Study the output of the lm(), especially the estimated coefficients and their p-values
+
+*What kind of effects can you see in the results at each stage?*
+
+- Try different values of the "Error standard deviation" (from 0 to 2),
+- and change also the True main effect of smoking (from 0 to 2)
+
+*What kind of effects can you see in the graph and in the results?*
+
+*Multiple linear regression app*: 
+https://argoshare.is.ed.ac.uk/multi_regression/
+
+See also Figure 7.4, where A explains the parts of the regression equation (linear model) visually, and B explains how they are represented in the output of the R function `lm()` that you are soon going to use yourself.
+
+
+### 7.1.5 Effect modification
+
+**Note:** the topic of this subsection is a bit more demanding, so do not worry if you do not immediately understand its contents. Be patient...
+
+Again use the *Multiple linear regression app* to work through the example of blood pressure (y), coffee consumption (x1) and smoking (x2), now comparing the three variants of the model: simple regression, additive model, and the interaction (aka multiplicative) model.
+
+More detailed instructions for using the app (adviced by Kimmo) - link to app is below these:
+- Begin by choosing *Simple regression* (the default option in the menu)
+
+- Set the True values as follows: intercept = 1, coffee drinking = 1, smoking = 2
+- Let the True interaction between coffee drinking and smoking to be 0
+- Study the output of the lm(), especially the estimated coefficients and their p-values
+- Next, choose *Additive model* and study the estimates and their p-values again
+- Finally, choose *Interactive model* and study the estimates and their p-values once again
+What kind of effects can you see in the results at each stage?
+
+- Then, change the model back to *Simple regression*
+- Now, set the True interaction between coffee drinking and smoking to be 0.8
+- Study the output of the lm(), especially the estimated coefficients and their p-values
+- Next, choose *Additive model* and study the estimates and their p-values again
+- Finally, choose *Interactive model* and study the estimates and their p-values once again
+What kind of effects can you see in the results at each stage?
+
+You may also try other values than those mentioned above.
+
+Again, you may also try different values of the "Error standard deviation" (from 0 to 2).
+What kind of effects can you see in the graph and in the results?
+
+*Multiple linear regression app*: (restart it in a new window, and choose "New Sample"!)
+https://argoshare.is.ed.ac.uk/multi_regression/
+
+See also Figure 7.6, which shows the three different models that you can study in the app (A: simple, B: additive, and C: multiplicative).
+
+
+### 7.1.6 R-squared and model fit
+
+R-squared is again one of the core concepts of the linear regression, although it does not tell everything (as always: one statistic cannot tell the whole story, compare with mean, standard deviation or correlation: we need to study the visualisations like scatter plots or diagnostic plots, too).
+
+What is the difference between *R-squared* and *adjusted R-Squared*? Which one is more useful in practice, what do you think?
+
+
+### 7.1.7 Confounding
+
+**Note:** the topic of this subsection is a bit more demanding, so do not worry if you do not immediately understand its contents. 
+
+Again use the *Multiple linear regression app* to work through the example of blood pressure (y), coffee consumption (x1) and smoking (x2), now studying the effects of confounding.
+
+More detailed instructions for using the app (adviced by Kimmo) - link to app is below these:
+- Again set the values of the sliders, e.g. to the values instructed earlier (or choose your own)
+- Now, also test the last one: Confound coffee drinking by smoking
+What kind of effects can you see in the graph and in the results?
+
+You may also try to find the sample & settings (or close to them) shown in Figure 7.7 (A and B).
+
+*Multiple linear regression app*: (again restart it in a new window, and choose "New Sample"!)
+https://argoshare.is.ed.ac.uk/multi_regression/
+
+See also Figure 7.7, which shows the confounding in action (A: with simple regression, where we think that coffee is a significant predictor, but we see the confounding in the graph, and B: with the additive model, where we adjust for confounding by adding the smoking as another predictor, and the effect of coffee disappears completely).
+
+
+### 7.1.8 Summary
+
+After this summary, we are ready to move on and begin linear regression modeling in R, first with the Gapminder dataset.
+
+**Well done!!**
+
+******************************************************
+
+## 7.2 Fitting simple models
+
+### 7.2.1 The Question (2)
+
+We are interested in modelling the change in life expectancy for different countries over the past 60 years.
+
+### 7.2.2 Get the data
+
+```{r}
+library(tidyverse)
+library(gapminder) # dataset
+library(finalfit)
+library(broom)
+library(gtsummary)#install.packages("gtsummary")
+#library(sjmic)#install.packages("sjmic")
+library(sjlabelled)#install.packages("sjlabelled")
+library(lubridate)#install.packages("lubridate")
+library(sjlabelled)
+
+
+theme_set(theme_bw())
+gapdata <- gapminder
+```
+
+### 7.2.3 Check the data
+
+```{r}
+glimpse(gapdata) # each variable as line, variable type, first values
+missing_glimpse(gapdata) # missing data for each variable
+ff_glimpse(gapdata) # summary statistics for each variable
+
+```
+
+### 7.2.4 Plot the data
+
+```{r}
+gapdata %>%                        
+  filter(continent == "Europe") %>%    # Europe only
+  ggplot(aes(x = year, y = lifeExp)) + # lifeExp~year  
+  geom_point() +                       # plot points
+  facet_wrap(~ country) +              # facet by country
+  scale_x_continuous(
+    breaks = c(1960, 2000)) +          # adjust x-axis 
+  geom_smooth(method = "lm")           # add regression lines
+```
+
+### 7.2.5 Simple linear regression
+
+Figure 7.9:
+
+```{r}
+gapdata %>% 
+  filter(country %in% c("Turkey", "United Kingdom")) %>% 
+  ggplot(aes(x = year, y = lifeExp, colour = country)) + 
+  geom_point()+
+  geom_smooth(method = "lm")
+```
+
+Separate models for the two countries:
+
+```{r}
+# United Kingdom
+fit_uk <- gapdata %>%
+  filter(country == "United Kingdom") %>% 
+  lm(lifeExp~year, data = .)
+
+fit_uk %>% 
+  summary()
+```
+
+```{r}
+# Turkey
+fit_turkey <- gapdata %>%
+  filter(country == "Turkey") %>% 
+  lm(lifeExp~year, data = .)
+
+fit_turkey %>% 
+  summary()
+```
+
+The regression coefficients (compare with the outputs above!):
+
+```{r}
+fit_uk$coefficients
+```
+
+```{r}
+fit_turkey$coefficients
+```
+
+### Kimmo's note:
+
+The intercept has not always a clear interpretation. Here, the authors go through explaining the topic, then creating a transformed version of the year-variable, in other words, scaling it more suitably, like 'anchoring' the beginning of the time line to the year 1952 (where the data begins!), instead of the year 0 (2000+ years ago), which is not relevant with this data:
+
+```{r}
+gapdata <- gapdata %>% 
+  mutate(year_from1952 = year - 1952)
+
+fit_uk <- gapdata %>%
+  filter(country == "United Kingdom") %>% 
+  lm(lifeExp ~ year_from1952, data = .)
+fit_uk %>% summary
+fit_turkey <- gapdata %>%
+  filter(country == "Turkey") %>% 
+  lm(lifeExp ~ year_from1952, data = .)
+fit_turkey %>% summary
+```
+
+### Kimmo's note continues:
+
+Then the authors continue with the coefficients - but, you could first redraw the scatter plot, now with the year_from1952 predictor instead of the year. As you see, now the "year 0" is where the data begins.
+
+```{r}
+
+gapdata %>% 
+  filter(continent == "Europe") %>% 
+  ggplot(aes(x = year_from1952, y = lifeExp)) +
+  geom_point(shape = 1, size = 0.3) +
+  facet_wrap(~country)
+```
+
+
+```{r}
+# This graph does not appear in the book:
+gapdata %>% 
+  filter(country %in% c("Turkey", "United Kingdom")) %>% 
+  ggplot(aes(x = year_from1952, y = lifeExp, colour = country)) + 
+  geom_point()+
+  geom_smooth(method = "lm")
+  
+```
+
+Now the intercepts are substantially meaningful, corresponding to the above plot:
+
+```{r}
+fit_uk$coefficients
+```
+
+```{r}
+fit_turkey$coefficients
+```
+
+```{r}
+fit_uk %>% tidy
+```
+```{r}
+fit_uk %>% glance
+```
+
+```{r}
+fit_pub <- tbl_regression(fit_uk)
+fit_pub
+```
+
+
+*Accessing all model information tidy() and glance()*
+
+### Kimmo's note:
+(The rest of the subsection can be considered more like 'nice to know'. I skip it here!)
+
+
+### 7.2.6 Multivariable linear regression
+
+*Model 1: year only*
+
+```{r}
+# UK and Turkey dataset
+gapdata_UK_T <- gapdata %>% 
+  filter(country %in% c("Turkey", "United Kingdom"))
+
+fit_both1 <- gapdata_UK_T %>% 
+  lm(lifeExp ~ year_from1952, data = .)
+fit_both1 %>%
+  summary() # added by KV
+```
+
+Figure "6.7": (typo in the book with these Figure numbers... should be Figure 7.10!)
+
+*Note:* in the graphs, the year variable is better than the year_from1952, because it displays the real years, beginning from 1952. However, the model is exactly the same (except the intercept).
+
+```{r}
+gapdata_UK_T %>% 
+  mutate(pred_lifeExp = predict(fit_both1)) %>% 
+  ggplot() + 
+  geom_point(aes(x = year, y = lifeExp, colour = country)) +
+  geom_line(aes(x = year, y = pred_lifeExp))
+gapdata_UK_T
+```
+
+```{r}
+gapdata_UK_T %>% 
+  mutate(pred_lifeExp = predict(fit_both1)) %>% 
+  select(country, year, lifeExp, pred_lifeExp) %>% 
+   group_by(country) %>%
+  slice(1, 6, 12)
+```
+
+(Not very good fit with the year only! Quite 'averaged' fit. How about adding the country?)
+
+*Model 2: year + country*
+
+```{r}
+fit_both2 <- gapdata_UK_T %>% 
+  lm(lifeExp ~ year_from1952 + country, data = .)
+fit_both2 %>% 
+  summary() # added by KV
+```
+
+Figure 7.10:
+
+```{r}
+gapdata_UK_T %>% 
+  mutate(pred_lifeExp = predict(fit_both2)) %>% 
+  ggplot() + 
+  geom_point(aes(x = year, y = lifeExp, colour = country)) +
+  geom_line(aes(x = year, y = pred_lifeExp, colour = country))
+```
+
+(The fit is getting better... but it can be still enhanced!)
+
+_Model 3: year * country_
+
+(i.e., the model that also includes the interaction of year and country, thus allowing the regression lines to differ not only in their intercepts but also in their slopes)
+
+```{r}
+fit_both3 <- gapdata_UK_T %>% 
+  lm(lifeExp ~ year_from1952 * country, data = .)
+fit_both3 %>%
+  summary() # added by KV  
+```
+
+Figure "6.8": (again a typo, cf. above... should be Figure 7.11!)
+
+```{r}
+gapdata_UK_T %>% 
+  mutate(pred_lifeExp = predict(fit_both3)) %>% 
+  ggplot() + 
+  geom_point(aes(x = year, y = lifeExp, colour = country)) +
+  geom_line(aes(x = year, y = pred_lifeExp, colour = country))
+```
+
+
+*Advanced tip:*
+```{r}
+mod_stats1 <- glance(fit_both1)
+mod_stats2 <- glance(fit_both2)
+mod_stats3 <- glance(fit_both3)
+
+bind_rows(mod_stats1, mod_stats2, mod_stats3)
+list(fit_both1, fit_both2, fit_both3) %>% 
+  map_df(glance)
+list(fit_both1, fit_both2, fit_both3) %>% 
+map_df(glance)
+
+#delete column
+#album2 <- album2[, -5] #delete column 5
+#album2 <- album2[, -c(5:7)] # delete columns 5 through 7
+#or album2[,5:7]<- list(NULL)
+#Convert All Character Columns of Data Frame to Factor
+#data3 <- as.data.frame(unclass(data3),                     # Convert all columns to factor
+#                       stringsAsFactors = TRUE)
+```
+
+(The rest of the subsection can be considered more like 'nice to know'.)
+
+
+### 7.2.7 Check assumptions
+
+Always do some basic regression diagnostics with a few important plots (cf. the app in subsection 7.1.3).
+
+(Install the ggfortify package: select the 'install.packages' command and run it in the Console!)
+
+Compare the diagnostic plots with the examples of the 
+*Simple linear regression diagnostics app*: 
+https://argoshare.is.ed.ac.uk/simple_regression_diagnostics
+
+See also the explanations in Figure 7.3 (A,B).
+
+```{r}
+library(ggfortify) # install.packages("ggfortify")
+# models 1 & 2 added here, too! (by KV)
+
+# Study these three models one at a time and see how the various stages of the model (1: only the year, 2: adding the country, and 3: adding their interaction as explanatory variables) is reflected in these diagnostic plots (cf. assumptions of the linear model stated earlier):
+
+autoplot(fit_both1)
+
+autoplot(fit_both2)
+
+autoplot(fit_both3)
+
+# PS. This detail concerning the 4th plot is more like 'nice to know': "Leverage" refers to single influential observations having an unnecessarily large effect on the model as a whole. If the residual of those observations is also large, then we may have a serious problem in the model. (For example, a clear outlier, such as an erroneous measurement, coding error etc.)
+#normality; equal variance; independence 
+?finalfit
+```
+
+
+*Awesome work!!* (We skip the rest of the Chapter 7.)
+
+
+*********************************************************************
+
+
+**The NEXT CHALLENGE is to investigate the USHS data with Linear Regression.**
+
+You can choose the variables freely. However, remember that in Linear Regression, the dependent/response/outcome variable must always be *continuous* (that is, "not too discrete", at least close to symmetric, although perhaps not perfectly normally distributed). 
+
+You may try the *factor score variables* (or the means you created earlier) as possible response variables (one at a time, of course). It would be good to have at least two (or more) such variables, because then you can also draw scatter plots (one of them being the response and the other a continuous predictor, just like in the blood pressure and coffee consumption example).
+
+*Begin from a simple regression: one response and one predictor.* Then add another predictor, and perhaps a third one (or you may try a model with an interaction).
+
+The second predictor could be a categorical variable (change it to a factor first, with appropriate levels; e.g. the gender or age are OK, but you may also check the list of other possible categorical variables of the USHS data).
+
+I put some old and new factors here for you. You may well add others, similarly! (For details, look at the USHS questionnaire/codebook!)
+
+```{r}
+library(tidyverse)
+library(gapminder) # dataset
+library(finalfit)
+library(broom)
+library(gtsummary)#install.packages("gtsummary")
+library(sjmic)#install.packages("sjmic")
+library(sjlabelled)#install.packages("sjlabelled")
+library(lubridate)#install.packages("lubridate")
+library(sjlabelled)
+library(psych)
+library(Hmisc)
+# NOTE! Use your own data where you have saved the new factor scores etc.! The below factors are examples that you may copy for your use, but you may also create some new factors similarly, possibly with different levels.
+USHSv2 <- read_csv("USHSv2.csv")
+USHS <- read.csv("daF3224e.csv", sep = ";")
+USHSv2 <- left_join(USHS, USHSv2)
+# once again, re-create the gender and age variables as factors:
+
+#USHSv2 <- USHSv2 %>%
+#  mutate(gender = k2 %>% factor() %>% 
+#           fct_recode("Male" = "1", "Female" = "2"),
+         
+#         age = k1 %>% factor() %>% 
+#           fct_recode("19-21" = "1", "22-24" = "2", "25-27" = "3", 
+#                      "28-30" = "4", "31-33" = "5", "33+" = "6")
+#         )
+
+USHSv2 %>% count(bv6)
+str(USHSv2, give.attr =T) 
+
+scol10 <- sapply(USHSv2, function(x)n_distinct(x)<20)
+collevels <- sapply(USHSv2[,scol10], function(x)unique(x))
+collevels[["k8_1"]]
+USHSv2 %>% select(k39_1) %>% head
+
+
+#lost some variables, get them back
+USHS <- read.csv("daF3224e.csv", sep = ";")
+USHSv2 %>% head
+
+USHSv2 <- left_join(USHS, USHSv2)
+
+```
+```{r}
+library(tidyverse)
+library(gapminder) # dataset
+library(finalfit)
+library(broom)
+library(gtsummary)#install.packages("gtsummary")
+library(sjmic)#install.packages("sjmic")
+library(sjlabelled)#install.packages("sjlabelled")
+library(lubridate)#install.packages("lubridate")
+library(sjlabelled)
+library(psych)
+library(Hmisc)
+library(expss)#install.packages("expss")
+```
+
+
+```{r}
+# preparation
+USHSv2 <- read_csv("USHSv2.csv")
+USHS <- read.csv("daF3224e.csv", sep = ";")
+USHSv2 <- left_join(USHS, USHSv2)
+#How many types of medical provider he/she saw 1~5 times last year.
+USHSv2 <- USHSv2  %>% 
+  rowwise() %>% 
+  mutate(med_seek_face_few =sum(across (starts_with("k37")&contains("_2_")) == 1, na.rm = T))%>% ungroup()
+
+#How many types of medical provider he/she saw >5 times last year.
+USHSv2 <- USHSv2  %>% 
+  rowwise() %>% 
+  mutate(med_seek_face_many =sum(across (starts_with("k37")&contains("_2_")) == 2, na.rm = T))%>% ungroup()
+USHSv2 %>% select(starts_with("med_")) %>% head
+
+#How many types of medical service he/she saw via phone last year.
+USHSv2 <- USHSv2  %>% 
+  rowwise() %>% 
+  mutate(med_seek_phone =sum(across (starts_with("k37")&contains("_3_")) == 3, na.rm = T))%>% ungroup()
+
+#How many types of medical service he/she saw via internet last year.
+USHSv2 <- USHSv2  %>% 
+  rowwise() %>% 
+  mutate(med_seek_online =sum(across (starts_with("k37")&contains("_4_")) == 4, na.rm = T))%>% ungroup()
+
+
+#If he/she saught any medical help during last year (yes/no)
+
+USHSv2 <- USHSv2  %>% 
+  rowwise() %>% 
+  mutate(med_seek_any =sum(across (starts_with("med_seek")), na.rm = T)) %>% 
+  mutate(med_seek_any = if_else(med_seek_any == 0, 0, 1)) %>% ungroup()
+  
+#######################
+USHSv2 %>% select(starts_with("med_")) %>% head (100)
+
+
+
+###turn k42_x hour:minute string to numbers (unit: hour)
+columns <- USHSv2 %>% select(starts_with("k42")) %>% names()
+sapply(USHSv2[,columns], class)
+USHSv2[columns] <- lapply(USHSv2[columns], function(x)hm(x, quiet = T))
+sapply(USHSv2[,columns], class)
+USHSv2[columns]
+USHSv2 <- USHSv2 %>% mutate(k42_1_hm = hour(k42_1)+ minute(k42_1)/60,
+                            k42_2_hm = hour(k42_2)+ minute(k42_2)/60,
+                            k42_3_hm = hour(k42_3)+ minute(k42_3)/60,
+                            k42_4_hm = hour(k42_4)+ minute(k42_4)/60,
+                            k42_5_hm = hour(k42_5)+ minute(k42_5)/60,
+                            k42_6_hm = hour(k42_6)+ minute(k42_6)/60)
+
+#add variable labels
+var_lab(USHSv2$k42_1_hm) = "study sitting time"
+var_lab(USHSv2$k42_2_hm) = "work sitting time"
+var_lab(USHSv2$k42_3_hm) = "TV&computer sitting time"
+var_lab(USHSv2$k42_4_hm) = "reading sitting time"
+var_lab(USHSv2$k42_5_hm) = "transportation sitting time"
+var_lab(USHSv2$k42_6_hm) = "other sitting time"
+
+k42_cols <- USHSv2 %>% select(starts_with("k42")& ends_with("hm")) %>% names()
+k42_cols
+lapply(USHSv2[k42_cols], function(x)var_lab(x))
+
+
+USHSv2 %>% select(contains("k42"))
+
+USHSv2
+#####
+
+#columns <- USHSv2 %>% select(starts_with("k42")) %>% names()
+#USHSv2[columns] <- lapply(USHSv2[columns], function(x)as.Date(x, format = "%H:%M", origin = "1970-01-01 12:00:00"))
+
+#sapply(USHSv2[,columns], class)
+
+#USHSv2 %>% 
+ # select(starts_with("k42")) 
+
+#USHSv2[,columns] <- sapply(USHSv2[columns], function(x)as.POSIXct(x, format = "%H:%M", origin = "1970-01-01 12:00:00"))
+#USHSv2 %>% 
+ # select(starts_with("k42")) 
+#hm(USHSv2$k42_1)
+#class(USHSv2$k42_1)
+#USHSv2$k42_1
+#?hm
+USHSv2$bv6
+
+USHSv2$k42_1 <- as.POSIXlt(USHSv2$k42_1, format = "%H:%M")
+get
+USHSv2$learndisab
+```
+
+
+```{r}
+# Similarly, here are some new factors that you could maybe use, too :
+
+USHSv2 <- USHSv2 %>%
+  mutate(eduinst = bv6 %>% factor() %>% 
+           fct_recode("Polytechnic" = "0", "University" = "1") %>% ff_label("Education Institute"))
+
+USHSv2 <- USHSv2 %>%
+  mutate(learndisab = k7 %>% factor() %>%
+           fct_recode("No" = "1", "Yes" = "2") %>% ff_label("Learning Difficulty"),
+         
+         wb_physical = k8_1 %>% factor() %>% 
+           fct_recode("Very poor" = "1", "Poor" = "2", "Fair" = "3", "Good" = "4", "Very good" = "5") %>% 
+           ff_label ("Self-reported physical well-being"),
+         
+         wb_mental = k8_2 %>% factor() %>% 
+           fct_recode("Very poor" = "1", "Poor" = "2", "Fair" = "3", "Good" = "4", "Very good" = "5") %>% 
+           ff_label("Self-reported mental well-being"),
+         
+         wb_social = k8_3 %>% factor() %>% 
+           fct_recode("Very poor" = "1", "Poor" = "2", "Fair" = "3", "Good" = "4", "Very good" = "5") %>% 
+           ff_label("Self-reported social well-being"),
+         
+         wb_overall = k8_1 %>% factor() %>% 
+           fct_recode("Very poor" = "4", "Poor" = "2", "Fair" = "3", "Good" = "4", "Very good" = "5") %>% 
+           ff_label("Self-reported overall well-being"))
+         
+# k9_1 to k9_30 : 1 month health problem. Variable name starts with dis meaning disease. Mental/emotional problems use "_ment", physical problems use "_ph"; Note that most of the disease collected here are possible to be mental. Only those very likely to be a mental problem for youngsters such as overeating was tagged as mental, albeit the fact that it can be one of the symptoms of physical issues like hyperthyroidism. 
+USHSv2 <- USHSv2 %>%
+  mutate(        
+         dis_ph_headache = k9_1 %>% factor() %>%
+           fct_recode("Not at all" = "1", "Occassionally" = "2",
+                      "Once a week" = "3", "Daily/almost daily" = "4") %>% 
+             ff_label("1 Month headache"),
+         
+         dis_ph_vertigo = k9_2 %>% factor() %>%
+           fct_recode("Not at all" = "1", "Occassionally" = "2",
+                      "Once a week" = "3", "Daily/almost daily" = "4") %>% 
+               ff_label("1 Month vertigo"),
+         
+         dis_ment_exhaustionl = k9_3 %>% factor() %>%
+           fct_recode("Not at all" = "1", "Occassionally" = "2",
+                      "Once a week" = "3", "Daily/almost daily" = "4") %>% 
+             ff_label("1 Month exhaustion and lethargy"),
+         
+         dis_ph_palpitation = k9_4 %>% factor() %>%
+           fct_recode("Not at all" = "1", "Occassionally" = "2",
+                      "Once a week" = "3", "Daily/almost daily" = "4") %>% 
+             ff_label("1 Month heart palpitations"),
+         
+         dis_ph_sn_pain = k9_5 %>% factor() %>%
+           fct_recode("Not at all" = "1", "Occassionally" = "2",
+                      "Once a week" = "3", "Daily/almost daily" = "4") %>% 
+             ff_label("1 Month shoulder or neck pain/discomfort"),
+         
+         dis_ph_lb_pain = k9_6 %>% factor() %>%
+           fct_recode("Not at all" = "1", "Occassionally" = "2",
+                      "Once a week" = "3", "Daily/almost daily" = "4") %>% 
+              ff_label("1 Month lower back pain/discomfort"),
+         
+         dis_ph_lj_pain = k9_7 %>% factor() %>%
+           fct_recode("Not at all" = "1", "Occassionally" = "2",
+                      "Once a week" = "3", "Daily/almost daily" = "4") %>% 
+            ff_label("1 Month pain in limbs and joints"),
+         
+         dis_ph_stom_pain = k9_8 %>% factor() %>%
+           fct_recode("Not at all" = "1", "Occassionally" = "2",
+                      "Once a week" = "3", "Daily/almost daily" = "4") %>% 
+           ff_label("1 Month stomach pain, heartburn/acid indigestion"), 
+         
+         dis_ph_nau_vom = k9_9 %>% factor() %>%
+           fct_recode("Not at all" = "1", "Occassionally" = "2",
+                      "Once a week" = "3", "Daily/almost daily" = "4") %>% 
+             ff_label("1 Month nausea or vomiting"),
+         
+         dis_ph_flat_swel = k9_10 %>% factor() %>%
+           fct_recode("Not at all" = "1", "Occassionally" = "2",
+                      "Once a week" = "3", "Daily/almost daily" = "4") %>% 
+             ff_label("1 Month flatulence or swelling"),
+         
+        dis_ph_consti_diarr = k9_11 %>% factor() %>%
+           fct_recode("Not at all" = "1", "Occassionally" = "2",
+                      "Once a week" = "3", "Daily/almost daily" = "4") %>% 
+            ff_label("1 Month constipation or diarrhea"),
+        
+        dis_ment_overeat = k9_12 %>% factor() %>%
+           fct_recode("Not at all" = "1", "Occassionally" = "2",
+                      "Once a week" = "3", "Daily/almost daily" = "4") %>% 
+             ff_label("1 Month binge eating/overeating"),
+        
+        dis_ph_sr_nose = k9_13 %>% factor() %>%
+           fct_recode("Not at all" = "1", "Occassionally" = "2",
+                      "Once a week" = "3", "Daily/almost daily" = "4") %>% 
+          ff_label("1 Month rhinitis, stuffy/runny nose"),
+        
+        dis_ph_cough_shortb = k9_14 %>% factor() %>%
+           fct_recode("Not at all" = "1", "Occassionally" = "2",
+                      "Once a week" = "3", "Daily/almost daily" = "4") %>% 
+          ff_label("1 Month persistent cough or shortness of breath"),
+        
+        dis_ph_throat_pain = k9_15 %>% factor() %>%
+           fct_recode("Not at all" = "1", "Occassionally" = "2",
+                      "Once a week" = "3", "Daily/almost daily" = "4") %>% 
+          ff_label("1 Month throat pain or phlegm in the throat"),
+        
+        dis_ph_throat_lump = k9_16 %>% factor() %>%
+           fct_recode("Not at all" = "1", "Occassionally" = "2",
+                      "Once a week" = "3", "Daily/almost daily" = "4") %>% 
+          ff_label("1 Month swallowing issues, sensation of a lump in the throat"),
+        
+        dis_ph_voice = k9_17 %>% factor() %>%
+           fct_recode("Not at all" = "1", "Occassionally" = "2",
+                      "Once a week" = "3", "Daily/almost daily" = "4") %>% 
+             ff_label("1 Month voice issues"),
+        
+        dis_ph_tinnitus = k9_18 %>% factor() %>%
+           fct_recode("Not at all" = "1", "Occassionally" = "2",
+                      "Once a week" = "3", "Daily/almost daily" = "4") %>% 
+             ff_label("1 tinnitus"),
+        
+        dis_ph_ski = k9_19 %>% factor() %>%
+           fct_recode("Not at all" = "1", "Occassionally" = "2",
+                      "Once a week" = "3", "Daily/almost daily" = "4") %>% 
+           ff_label("1 Month skin issues"),
+        
+        dis_ph_gum = k9_20 %>% factor() %>%
+           fct_recode("Not at all" = "1", "Occassionally" = "2",
+                      "Once a week" = "3", "Daily/almost daily" = "4") %>% 
+          ff_label("1 Month bleeding gums or other gum issues"),
+        
+        dis_ph_teeth = k9_21 %>% factor() %>%
+           fct_recode("Not at all" = "1", "Occassionally" = "2",
+                      "Once a week" = "3", "Daily/almost daily" = "4") %>% 
+          ff_label("1 Month dental problems (sensitive teeth, toothache)"),
+        
+        dis_ph_wis_teeth = k9_22 %>% factor() %>%
+           fct_recode("Not at all" = "1", "Occassionally" = "2",
+                      "Once a week" = "3", "Daily/almost daily" = "4") %>% 
+          ff_label("1 Month issues with wisdom teeth"),
+        
+        dis_ph_chew = k9_23 %>% factor() %>%
+           fct_recode("Not at all" = "1", "Occassionally" = "2",
+                      "Once a week" = "3", "Daily/almost daily" = "4") %>% 
+        ff_label("1 Month problems with chewing or biting"),
+        
+        dis_ment_sleep = k9_24 %>% factor() %>%
+           fct_recode("Not at all" = "1", "Occassionally" = "2",
+                      "Once a week" = "3", "Daily/almost daily" = "4") %>% 
+        ff_label("1 Month waking up during the night or difficulty falling asleep"),
+        
+        dis_ment_focus = k9_25 %>% factor() %>%
+           fct_recode("Not at all" = "1", "Occassionally" = "2",
+                      "Once a week" = "3", "Daily/almost daily" = "4") %>% 
+        ff_label("1 Month difficulty concentrating"),
+        
+        dis_ment_nerv_tens = k9_26 %>% factor() %>%
+           fct_recode("Not at all" = "1", "Occassionally" = "2",
+                      "Once a week" = "3", "Daily/almost daily" = "4") %>% 
+        ff_label("1 Month nervousness or tension"),
+         
+        dis_ment_depress = k9_27 %>% factor() %>%
+           fct_recode("Not at all" = "1", "Occassionally" = "2",
+                      "Once a week" = "3", "Daily/almost daily" = "4") %>% 
+        ff_label("1 Month depression or melancholy"),
+        
+        dis_ment_anxiety = k9_28 %>% factor() %>%
+           fct_recode("Not at all" = "1", "Occassionally" = "2",
+                      "Once a week" = "3", "Daily/almost daily" = "4") %>% 
+        ff_label("1 Month anxiety"),
+        
+        dis_ph_urin = k9_29 %>% factor() %>%
+           fct_recode("Not at all" = "1", "Occassionally" = "2",
+                      "Once a week" = "3", "Daily/almost daily" = "4") %>% 
+        ff_label("1 Month problems urinating"),
+        
+        dis_ph_ic_pain = k9_30 %>% factor() %>%
+           fct_recode("Not at all" = "1", "Occassionally" = "2",
+                      "Once a week" = "3", "Daily/almost daily" = "4") %>% 
+        ff_label("1 Month pain during intercourse"),
+        
+
+
+#k13 self-perceived weight, level "seriously overweight" was labeled as obese to link to BMI ranges. It could be interesting to look at the consistency between self-reported weight and factual weight (reflected by BMI ranges)
+
+         weightthink = k13 %>% factor() %>%
+           fct_recode("Underweight" = "1", "Underweight" = "2",
+                      "Just right" = "3", "Overweight" = "4", "Obese" = "5") %>% 
+           ff_labels ("Self-perceived weight"),
+
+
+#k37 12 month medical help seeking 
+        med_seek_face_any = med_seek_face_any %>% factor () %>% 
+           fct_recode("Yes"  = "1", "No" = "0") %>% 
+           ff_labels("Seek any medical help last year"),
+
+# again, some examples, now from k39 variables:
+         help_time = k39_1 %>% factor() %>%
+           fct_recode("No" = "0", "Yes" = "1"),
+         help_stress = k39_2 %>% factor() %>%
+           fct_recode("No" = "0", "Yes" = "1"),
+         help_studyprbl = k39_3 %>% factor() %>%
+           fct_recode("No" = "0", "Yes" = "1"),
+         help_studyskills = k39_4 %>% factor() %>%
+           fct_recode("No" = "0", "Yes" = "1"),
+         help_socialrels = k39_5 %>% factor() %>%
+           fct_recode("No" = "0", "Yes" = "1"),
+         help_selfsesteem = k39_6 %>% factor() %>%
+           fct_recode("No" = "0", "Yes" = "1"),
+
+#physical activity
+         exercise_minutes = k40 %>% factor() %>%
+           fct_recode("<15min" = "0", "15-30min" = "1",
+                      "30-60min" = "2", "Over 1h" = "3"),
+         exercise_minutes = k40 %>% factor() %>%
+           fct_recode("<15min" = "0", "15-30min" = "1",
+                      "30-60min" = "2", "Over 1h" = "3"),
+
+# then, some different examples:
+
+
+
+         sweaty_exercise = k41 %>% factor() %>%
+           fct_recode("Not at all/seldom" = "0", "1-3 times/month" = "1",
+                      "Once/week" = "2", "2-3 times/week" = "3",
+                      "4-6 times/week" = "4", "Daily" = "5"),
+
+         buy_healthy_food = k44 %>% factor() %>%
+           fct_recode("Never/very seldom" = "0", "Occassionally" = "1", "Often" = "2"),
+
+         eat_lunch_restaurant = k45 %>% factor() %>%
+           fct_recode("On five days" = "1", "On 3-4 days" = "2",
+                      "On 1-2 days" = "3", "Less frequently" = "4"),
+
+         teeth_brush  = k56 %>% factor() %>%
+           fct_recode("Less often than once a day" = "1", "Once/day" = "2",
+                      "More often than once a day" = "3"),
+
+         teeth_floss = k58 %>% factor() %>%
+           fct_recode("Not at all" = "0", "Occassionally" = "1",
+                      "2-3 times a week" = "2", "Daily" = "3"),
+
+         dental_scary = k66 %>% factor() %>%
+           fct_recode("Not at all" = "0", "Somewhat" = "1", "Very much" = "2"),
+
+         tobacco_use = k67_1 %>% factor() %>%
+           fct_recode("Not at all" = "0", "Moderately" = "1", 
+                      "A bit too much" = "2", "Way too much" = "3",
+                      "Can't say" = "4"),
+         
+         beer_wine_etc = k74 %>% factor() %>%
+           fct_recode("Never" = "0", "Once a month" = "1", 
+                      "2-4 times a month" = "2", "2-3 times a week" = "3",
+                      "4 or more times a week" = "4"),
+         
+         study_years = k89_1 %>% factor() %>%
+           fct_recode("Under 3 years" = "1", "3-6 years" = "1", 
+                      "Over 6 years" = "2"),
+
+         success = k91 %>% factor() %>%
+           fct_recode("More successful than expected" = "1",
+                      "As successful as expected" = "2",
+                      "Less successful than expected" = "3"),
+
+         right_field = k92 %>% factor() %>%
+           fct_recode("No" = "0", "Yes" = "1", "Can't say" = "2"),
+
+         household = k106 %>% factor() %>%
+           fct_recode("Alone" = "1",
+                      "Shared accommodation" = "2",
+                      "With partner" = "3",
+                      "With partner and children" = "4",
+                      "Alone with children" = "5",
+                      "With my parents" = "6",
+                      "Other" = "7"))
+
+# I'm sure you can create more similarly! :)
+
+USHSv2 %>% select(starts_with("k37")) %>% head
+?enframe
+USHSv2 %>% get_labels()
+install.packages("sjlabelled")
+USHSv2 %>% get_labels()
+enframe(get_label(USHSv2))
+
+
+```
+
+Let us look at all the above categorical variables that were created:
+
+```{r}
+USHSv2 %>% select(gender, age, eduinst: household) %>% View()
+
+# or, sorting the selected data by a few variables and then viewing the data:
+
+USHSv2 %>% 
+  select(gender, age, eduinst: household) %>% 
+  arrange(-eduinst, gender, age) %>% # (university students get listed first)
+  View()
+
+# simple summaries of the variables: created above:
+USHSv2 %>% 
+  select(gender, age, eduinst: household) %>% 
+  summary()
+
+```
+
+In addition, you could create a mean-variable of a general well-being, using these four variables (they are all measured from 1: Very poor to 5: Very good):
+
+    k8_1:k8_4, # current well-being
+
+(Alternatively, you could create a factor score of that, based on one-factor Factor Analysis?)
+
+
+
+**OK, now it is your turn to continue analysing the USHS data!**
+
+
+**Study at least _three different_ Linear Regression models.**
+
+
+**Good luck!**
+
+Create your models here, and then gather the best ones to the **Assignment 3**.
+
+You may also save this Rmd with a different name for each model, if you want: Hands-On-Exercise3a, b, c... or some other naming convention of your choice.
+
+In any case, *save the R codes and your comments of your modelling experiments*, so that you can copy the selected codes and comments to the **Assignment 3**.
+
+
+*********************
+
+As soon as you have completed the **Hands-On Exercise 3**, you are ready for **Assignment 3**.
+
+*GOOD JOB, once again!!*

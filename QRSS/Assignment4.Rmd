@@ -1,0 +1,557 @@
+---
+title: "Quantitative Research Skills 2022, Assignment 4"
+subtitle: "Logistic Regression"
+
+author: "Rong Guang"
+date: "16/10/2022"
+
+output: 
+  html_document:
+    theme: flatly
+    highlight: haddock
+    toc: true
+    toc_depth: 2
+    number_section: false
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+# Assignment 4: Logistic Regression
+
+Begin working with this when you have completed the **Hands-On Exercise 4**.
+
+*********************************************
+
+Show and report (step by step) the **Logistic Regression models** you created with the **USHS data**. What kind of conclusions do you make in each of the models? How about the odds-ratios of the explanatory variables?
+
+
+
+# 1. Preparing 
+
+## 1.1 Packages loading
+
+```{r}
+library(tidyverse)
+library(tidyr)
+library(gapminder) # dataset
+library(finalfit)
+library(broom)
+library(gtsummary)#install.packages("gtsummary")
+library(sjlabelled)#install.packages("sjlabelled")
+library(lubridate)#install.packages("lubridate")
+library(sjlabelled)
+library(psych)
+library(Hmisc)
+library(expss)#install.packages("expss")
+library(patchwork)
+library(ggfortify)
+library(DT)
+library(modelsummary)#install.packages("modelsummary")
+```
+
+
+## 1.2 Data loading
+```{r}
+USHSv3 <- read_csv("USHSv3.csv")
+USHSv3 %>% select (545:569) %>% DT::datatable()
+USHSv3 %>% mutate (sweaty_exercise = sweaty_exercise %>% ff_label("heavey exercise"))
+```
+## 1.3 Generating new variables
+
+### 1.3.1 Generating variable about 1-year medical help seeking practice
+
+&emsp;Items under k37 collected information about whether and how much medical help seeking behaviors (MHSB) the respondents had for the past one year for various type of medical providers. Here I simplified them into whether theyhave MHSB for any type of service. 
+
+```{r}
+#select columns k37s. This is for faster execution. 
+
+col_k37 <- USHSv3  %>% select (fsd_id, starts_with("k37"))
+
+#if the respondent use any type of medical provider he/she saw 1~5 times last year.
+
+col_k37 <- col_k37 %>% mutate(med_seek_face = 
+                                case_when(if_any(contains("_2_"), ~.x > 0) ~ "Yes",
+                                                       TRUE ~ "No")%>% 
+                                factor() %>% 
+                                ff_label("use any medical visits face_to_face"))
+
+#if the respondent use any type of medical service he/she saw via phone last year.
+#a new variable
+
+col_k37 <- col_k37 %>% mutate(med_seek_phone = 
+                                case_when(if_any(contains("_3_"), ~.x > 0) ~ "Yes",
+                                                         TRUE ~ "No") %>% 
+                                factor() %>% 
+                                ff_label("use any medical service via phone"))
+
+#How many types of medical service he/she saw via internet last year.
+#a new variable
+
+col_k37 <-col_k37 %>% mutate(med_seek_online = 
+                               case_when(if_any(contains("_4_"), ~.x > 0) ~ "Yes",
+                             TRUE ~ "No") %>% 
+                               factor() %>% 
+                               ff_label("medical service online user"))
+
+#If he/she sought any medical help during last year (yes/no)
+#This is a combination of the four new variables above, if any of them has
+#a value of 1, this new variable also gets a value of 1, or else it gets 0.
+
+col_k37 <- col_k37  %>% 
+  mutate(med_service_any = 
+           case_when(if_any(starts_with("med_seek"), ~.x == "Yes")~ "Yes",
+                     if_all(starts_with("med_seek"), ~.x == "No")~ "No") %>% 
+           factor() %>% 
+           ff_label("any medical help seeking during last year"))
+
+#join the new variables to USHSv3
+USHSv3 <- left_join(USHSv3, col_k37)
+```
+
+```{r}
+#inspect the new variables
+col_k37 %>% select(med_seek_face, med_seek_phone, med_seek_online, med_service_any) 
+col_k37 %>% count(med_seek_face, med_seek_phone, med_seek_online, med_service_any)
+
+```
+
+### 1.3.2 Generating variable about diagnosed long-term disease
+
+&emsp;Items  k6_1 to k6_29 are about "Has a doctor/dentist/psychologist diagnosed you with a long-lasting or recurring illness/disorder/health problem. Here I transformed there to three variable that shows 1) if a respondent has any long-term disease (**disease_any**); 2) if a respondent has any long-term physical disease (**disease_physical**, k6_1 to k6_24); and 3) if a respondent has any long-term psychological disease (**disease_mental**, ~k6_29).
+
+```{r}
+
+#generate variable "disease_any"
+USHSv3 <- USHSv3 %>% 
+  mutate(disease_any = 
+           case_when(if_any(c(k6_16:k6_29), ~.x == 2) ~ "Yes",
+                     if_any(c(k6_1:k6_15_4), ~.x == 1) ~ "Yes",
+                     if_all(c(k6_16:k6_29), ~.x == 1) ~ "No",
+                     if_all(c(k6_1:k6_15_4), ~.x == 0) ~ "No",
+                     TRUE ~ NA_character_) %>% 
+                    factor() %>% 
+                     ff_label("if the respondent has any diagnosed 
+                              long-term disease"))
+
+#generate variable "disease_physical"
+USHSv3 <- USHSv3 %>% 
+  mutate(disease_physical = 
+           case_when(if_any(c(k6_16:k6_24_3), ~.x == 2) ~ "Yes",
+                     if_any(c(k6_1:k6_15_4), ~.x == 1) ~ "Yes",
+                     if_all(c(k6_16:k6_24_3), ~.x == 1) ~ "No",
+                     if_all(c(k6_1:k6_15_4), ~.x == 0) ~ "No",
+                     TRUE ~ NA_character_) %>% 
+                     factor() %>% 
+                     ff_label("if the respondent has any diagnosed phycial 
+                              long-term physical disease"))
+
+#generate variable "disease_mental"
+USHSv3 <- USHSv3 %>% 
+  mutate(disease_mental = 
+           case_when(if_any(c(k6_25:k6_29), ~.x == 2) ~ "Yes",
+                     if_all(c(k6_25:k6_29), ~.x == 1) ~ "No",
+                     TRUE ~ NA_character_) %>% 
+                     factor() %>% 
+                     ff_label("if the respondent has any diagnosed phycial 
+                              long-term mental disease"))
+```
+
+```{r}
+#inspect new variables
+USHSv3 %>% select(starts_with("disease"))
+```
+
+### 1.3.3 Generating variable about use of health-related mobile application
+
+&emsp;items  Items k38_1 to k38_9 are about usage of health-related mobile application for various health concerns. Respondents rated on a scale from 0~4, indicating "never" to "daily use". Here I dichotomized it to "frequent user" (levels 3,4) and "not frequent user" (levels 0,1,2).
+
+```{r}
+#generate variable about frequent health-related app user
+USHSv3 <- USHSv3 %>% 
+  mutate(frequent_health_app_user = 
+           case_when(if_any(c(k38_1:k38_9), ~.x >2) ~ "Yes",
+                     if_all(c(k38_1:k38_9), ~.x <= 2) ~ "No",
+                     TRUE ~ NA_character_) %>% 
+           factor() %>% 
+           ff_label("frequent health-related app user"))
+```
+
+```{r}
+#inspect the new variable
+USHSv3 %>% select(frequent_health_app_user)
+```
+
+### 1.3.4 Generating variable about use of willingness of health-related help seeking
+
+&emsp;items  Items k39_7 to k39_23 are about the respondents' willingness of health-related help seeking for various types of health concerns. Here I converted it to a new variable showing if a respondent has a will for health-related help seeking in any type. 
+
+```{r}
+#generate variable about use of willingness of health-related help seeking
+USHSv3 <- USHSv3 %>% 
+  mutate(help_seek_any = case_when(if_any(c(k39_7:k39_23), ~.x == 1) ~ "Yes",
+                                  if_all(c(k39_7:k39_23), ~.x == 0) ~ "No",
+                                  TRUE ~ NA_character_) %>% 
+          factor() %>% 
+          ff_label("open to health-related help seeking"))
+```
+
+```{r}
+#inspect the new variable
+USHSv3 %>% count(help_seek_any)
+```
+
+### 1.3.5 Generating variable about use of tobacco, alcohol and drugs. 
+
+&emsp;items  Items k67_1 is about the frequency of tobacco use; k67_2 is about alcohol use; k67_3 to k67_5 are about drug use. Here, they were converted to binary variables showing if they are users or not for each substance. 
+
+```{r}
+USHSv3 <- USHSv3 %>% 
+  mutate(user_tobacco = case_when(k67_1 == 0 ~ "No",
+                                 k67_1 >0 ~ "Yes",
+                                 is.na(k67_1) ~ NA_character_) %>% 
+          factor() %>% 
+          ff_label("if the respondent is a tabacco user"))
+
+USHSv3 <- USHSv3 %>% 
+  mutate(user_alcohol = case_when(k67_2 == 0 ~ "No",
+                                 k67_2 >0 ~ "Yes",
+                                 is.na(k67_2) ~ NA_character_) %>% 
+          factor() %>% 
+          ff_label("if the respondent is a alcohol user"))
+
+USHSv3 <- USHSv3 %>% 
+  mutate(user_drug = case_when(if_any(c(k67_3:k67_5), ~.x > 0) ~ "Yes",
+                               if_all(c(k67_3:k67_5), ~.x == 0) ~ "No",
+                               TRUE ~ NA_character_) %>% 
+          factor() %>% 
+          ff_label("if the respondent is a drug user"))
+
+USHSv3 <- USHSv3 %>% 
+  mutate(user_any = case_when(if_any(c(k67_1:k67_5), ~.x > 0) ~ "Yes",
+                               if_all(c(k67_1:k67_5), ~.x == 0) ~ "No",
+                               TRUE ~ NA_character_) %>% 
+          factor() %>% 
+          ff_label("an alcohol/tobacco/drug user"))
+
+```
+
+
+```{r}
+#inspect new variables
+USHSv3 %>% count(user_alcohol, user_drug, user_tobacco, user_any)
+USHSv3 %>% count(user_any)
+```
+
+### 1.3.5 Generating variable about use of electronic products. 
+
+&emsp;items  Items k42_3 is about how long (hours and minutes) the respondent would use electronic products (phone, computer, tablet, TV) during week days per week. Here it was converted to hours. 
+
+```{r}
+#I accidentally messed up values in k42 items, need to reload the original data set and pass correct data into USHSv3.
+USHSv2 <- read.csv("daF3224e.csv", sep = ";")
+USHSv3$electronic_use <- hm(USHSv2[,"k42_3"], quiet = T)
+USHSv3$electronic_use <- hour(USHSv3$electronic_use) + minute(USHSv3$electronic_use)/60
+```
+
+# 2. Generating and inspecting data set for anlaysis
+
+## 2.1 Generating data set
+
+```{r}
+##select variable generated in assignment 3 and 4
+USHS_glm <- USHSv3 %>% select(fsd_id, which(colnames(USHSv3) == "height"): ncol(USHSv3), -starts_with("sit_"))
+```
+
+## 2.2 Inspecting data set
+
+### 2.2.1 Inspecting categorical variables
+
+```{r}
+USHS_glm[,-1] %>% select_if(is.factor) %>% sapply(., function(x)table(x))
+```
+
+### 2.2.2 Inspecting continuous variables
+
+```{r}
+USHS_glm %>% select_if(is.numeric) %>% psych::describe()%>% DT::datatable() %>% 
+  DT::formatRound(columns = c(3:13), digits = 2)
+```
+
+```{r}
+#This time only one numeric variable electronic_use was generated. Its 
+#distribution was examined here. Other numeric variables had been inspected
+#previously. I skipped them here.
+
+USHS_glm %>% ggplot(aes(x= electronic_use)) +
+  geom_histogram(fill = "deepskyblue", colour = "black", binwidth = 1)+
+  labs(title = "histogram for electromic use", x = "Electronic Use Hours in Working Days/week", y = "Count") +
+  theme_bw()
+
+USHS_glm %>% ggplot(aes(sample = electronic_use)) +
+  geom_qq(shape = "circle filled", fill = "grey", size = 3, colour = "black") +
+  geom_qq_line(colour = "blue") +
+  labs(title = "QQ plot for electromic use", x = "Theoretical Quantiles", y = "Sample Quantiles") +
+  theme_bw()
+
+USHS_glm %>% ggplot(aes(x = electronic_use)) +
+  geom_boxplot()+
+  labs(title = "Box plot for electromic use", x = "Hours", y = "Electronic Use in Working Days/week") +
+  theme_bw()
+```
+
+# 3. Variable selecting and Modeling
+
+## 3.1 Research question
+
+&emsp;Evidence has shown that internet is an important source of health-related information for a wide range of users worldwide. In recent years, mobile applications have become highly pervasive. Little is known about the personal characteristics of Finnish college students who frequently use mobile applications for seeking health and wellness information.
+
+&emsp;I hypothesize these aspects can be used to predict Finnish student who are frequent health-related mobile app users (FHMAU), including a college student's demographics (gender), health maintenance behavior (reflected by amount of heavy exercise per week), past experience in online medical service seeking (reflected by the online medical service usage of the past year),  past experience in internet surfing (reflected by amount of time with electronic products during working days per week), and presence of health problems (reflected by diagnosed health disease and alcohol/tobacco/drug usage). 
+
+## 3.2 Inspecting categorical variables' effect on FHMAU
+
+### 3.2.1 Inspecting gender's effect on FHMAU
+
+```{r}
+p1 <- USHS_glm %>% 
+  filter(!is.na(frequent_health_app_user) & !is.na(gender)) %>%
+  ggplot(aes(x = gender, fill = frequent_health_app_user)) + 
+  geom_bar() + coord_flip() +
+  theme(legend.position = "none")
+
+p2 <- USHS_glm %>% 
+  filter(!is.na(frequent_health_app_user) & !is.na(gender)) %>%
+  ggplot(aes(x = gender, fill = frequent_health_app_user)) + 
+  geom_bar(position = "fill") + coord_flip() +
+  ylab("proportion")
+
+p1 + p2
+```
+&emsp;Gender seems to have an effect on FHMAU. Female students are more likely to be FHMAU.
+
+### 3.2.2 Inspecting the effect of amount of heavy exercise on FHMAU
+
+```{r}
+p3 <- USHS_glm %>% 
+  filter(!is.na(sweaty_exercise) & !is.na(frequent_health_app_user)) %>%
+  ggplot(aes(x = sweaty_exercise, fill = frequent_health_app_user)) + 
+  geom_bar() + coord_flip() +
+  theme(legend.position = "none")
+
+p4 <- USHS_glm %>% 
+  filter(!is.na(sweaty_exercise) & !is.na(frequent_health_app_user)) %>%
+  ggplot(aes(x = sweaty_exercise, fill = frequent_health_app_user)) + 
+  geom_bar(position = "fill") + coord_flip() +
+  ylab("proportion")
+
+p3 + p4
+```
+
+&emsp;Amount of heavy exercise seems to have a positive predictive effect on FHMAU.
+
+### 3.2.3 Inspecting the effect of online medical service usage of the past year on FHMAU
+
+```{r}
+p5 <- USHS_glm %>% 
+  filter(!is.na(med_seek_online) & !is.na(frequent_health_app_user)) %>%
+  ggplot(aes(x = med_seek_online, fill = frequent_health_app_user)) + 
+  geom_bar() + coord_flip() +
+  theme(legend.position = "none")
+
+p6 <- USHS_glm %>% 
+  filter(!is.na(med_seek_online) & !is.na(frequent_health_app_user)) %>%
+  ggplot(aes(x = med_seek_online, fill = frequent_health_app_user)) + 
+  geom_bar(position = "fill") + coord_flip() +
+  ylab("proportion")
+
+p5 + p6
+```
+
+&emsp;Online medical service usage seems to have a weak predictive effect on FHMAU. Students used online health service will be more likely using health app. 
+
+### 3.2.4 Inspecting the effect of diagnosed health disease on FHMAU
+
+```{r}
+p7 <- USHS_glm %>% 
+  filter(!is.na(disease_any) & !is.na(frequent_health_app_user)) %>%
+  ggplot(aes(x = disease_any, fill = frequent_health_app_user)) + 
+  geom_bar() + coord_flip() +
+  theme(legend.position = "none")
+
+p8 <- USHS_glm %>% 
+  filter(!is.na(disease_any) & !is.na(frequent_health_app_user)) %>%
+  ggplot(aes(x = disease_any, fill = frequent_health_app_user)) + 
+  geom_bar(position = "fill") + coord_flip() +
+  ylab("proportion")
+
+p7 + p8
+```
+
+&emsp;Presence of a diagnosed long-term disease seems to have a weak predictive effect on FHMAU. Students with diagnosed chronic disease will be more likely using health app. 
+
+### 3.2.5 Inspecting the effect of alcohol/tobacco/drug usage on FHMAU
+
+```{r}
+p9 <- USHS_glm %>% 
+  filter(!is.na(user_any) & !is.na(frequent_health_app_user)) %>%
+  ggplot(aes(x = user_any, fill = frequent_health_app_user)) + 
+  geom_bar() + coord_flip() +
+  theme(legend.position = "none")
+
+p10 <- USHS_glm %>% 
+  filter(!is.na(user_any) & !is.na(frequent_health_app_user)) %>%
+  ggplot(aes(x = user_any, fill = frequent_health_app_user)) + 
+  geom_bar(position = "fill") + coord_flip() +
+  ylab("proportion")
+
+p9 + p10
+```
+
+&emsp;Alcohol/tobacco/drug usage  seems to have a weak predictive effect on FHMAU. Students using alcohol/tobacco/drug will be more likely using health app. 
+
+
+## 3.3 Modeling
+
+&emsp;Six models will be fitted. Model 1 included gender. In model 2, I added health maintenance behavior. In model 3, I added past experience in online medical service seeking. In model 4 I added past experience in internet surfing.  In model 5, I added presence of health problems. Model 6 removed insignificant variables from model 5. 
+
+### 3.3.1 Fitting 6 models
+
+```{r}
+#Model1: demographics (gender) as independent variable
+fit1 <- USHS_glm %>%
+  glm(frequent_health_app_user~ gender , family = binomial, data = .)
+#results
+fit1 %>% 
+  tidy(conf.int = TRUE, exp = TRUE)%>% DT::datatable()
+```
+
+```{r}
+#Model2:further added health maintenance behavior (reflected by amount of heavy exercise per week)
+fit2 <- USHS_glm %>%
+  glm(frequent_health_app_user~ gender + sweaty_exercise , family = binomial, data = .)
+#results
+fit2 %>% 
+  tidy(conf.int = TRUE, exp = TRUE)%>% DT::datatable()
+```
+
+```{r}
+#Model3: further added past experience in online medical service seeking (reflected by the online 
+#medical service usage of the past year)
+fit3 <- USHS_glm %>%
+  glm(frequent_health_app_user~ gender + sweaty_exercise + med_seek_online, family = binomial, data = .)
+#results
+fit3 %>% 
+  tidy(conf.int = TRUE, exp = TRUE, digits = 3)%>% DT::datatable()
+```
+
+```{r}
+#Model4: further added past experience in internet surfing (reflected by amount of time with electronic products during working days per week)
+fit4 <- USHS_glm %>%
+  glm(frequent_health_app_user~ gender + sweaty_exercise + med_seek_online + electronic_use, family = binomial, data = .)
+
+#results
+fit4 %>% 
+  tidy(conf.int = TRUE, exp = TRUE)%>% DT::datatable()
+
+#note that the coefficient of electronic product usage is not significant, indicating it might not 
+#have predictive value for health app use.
+```
+
+
+```{r}
+#Model5: further added presence of health problems(reflected by diagnosed health disease and alcohol/tobacco/drug usage)
+
+fit5 <- USHS_glm %>%
+  glm(frequent_health_app_user~ gender + sweaty_exercise + med_seek_online + electronic_use + disease_any + user_any, family = binomial, data = .)
+
+#result
+fit5 %>% 
+  tidy(conf.int = TRUE, exp = TRUE) %>% DT::datatable()
+
+#note that the coefficients of presence of diagnosed disease is not significant, indicating it might not 
+#have predictive value for health app use.
+```
+
+
+
+```{r}
+#Model6: further removed insifgnificant predictors from model5
+
+fit6 <- USHS_glm %>%
+  glm(frequent_health_app_user~ gender + sweaty_exercise + med_seek_online + user_any, family = binomial, data = .)
+
+#results
+fit6 %>% 
+  tidy(conf.int = TRUE, exp = TRUE)%>% DT::datatable()
+```
+
+## 3.3.2 Model comparison
+
+```{r}
+models <- list ("Model1" = glm(frequent_health_app_user~ 
+                               gender, 
+                             family = binomial, data = USHS_glm), 
+                "Model2" = glm(frequent_health_app_user~ 
+                               gender + 
+                               sweaty_exercise , 
+                             family = binomial, 
+                             data = USHS_glm), 
+                "Model3" = glm(frequent_health_app_user~ 
+                               gender + 
+                               sweaty_exercise + 
+                               med_seek_online, 
+                             family = binomial, 
+                             data = USHS_glm), 
+                "Model4" = glm(frequent_health_app_user~ gender + 
+                               sweaty_exercise + 
+                               med_seek_online + 
+                               electronic_use, 
+                             family = binomial, 
+                             data = USHS_glm), 
+                "Model5" = glm(frequent_health_app_user~ gender + 
+                               sweaty_exercise + 
+                               med_seek_online + 
+                               electronic_use + 
+                               disease_any + 
+                               user_any, 
+                             family = binomial, 
+                             data = USHS_glm), 
+                "Model6" = glm(frequent_health_app_user~ gender + 
+                               sweaty_exercise + 
+                               med_seek_online + 
+                               user_any, 
+                             family = binomial, 
+                             data = USHS_glm))
+
+ modelsummary(
+  models,
+  fmt = 1,
+  estimate  = "{estimate} [{conf.low}, {conf.high}]",
+  statistic = NULL,
+  coef_omit = "Intercept") 
+
+```
+
+# 3.4 Visualising ORs
+
+&emsp;Model 6 of which all variables have coeefficients with significant predictive effects on health app use will be visualized. 
+
+```{r}
+dependent <-  "frequent_health_app_user"
+explanatory <- c("gender", "sweaty_exercise", "med_seek_online", "user_any")
+
+
+USHS_glm %>% 
+  or_plot(dependent, explanatory, table_text_size = 3.0,
+          title_text_size = 12) 
+
+```
+
+&emsp;Conclusion: Being a male, frequently doing heavy exercise, open to using medical service online and being an alcohol/tobacco/drug user would predict the use of health-related mobile applications among Finnish college students.
+
+
+*******************************************************
+
+**GOOOOOD JOB!!**
+
+Just knit this and SUBMIT the result (HTML) as your report of the **Assignment 4** in Moodle. 

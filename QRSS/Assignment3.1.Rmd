@@ -1,0 +1,582 @@
+---
+title: "Quantitative Research Skills 2022, Assignment 3"
+subtitle: "Linear Regression"
+
+author: "Write your name here"
+date: "Write the date here"
+
+output: 
+  html_document:
+    theme: flatly
+    highlight: haddock
+    toc: true
+    toc_depth: 2
+    number_section: false
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
+```
+
+# Assignment 3: Linear Regression
+
+Begin working with this when you have completed the **Hands-On Exercise 3**.
+
+Q1: Describe the idea of the Linear Regression and the procedure of creating, testing, and diagnosing a Linear Regression model **in your own words:** (of course you may use words from the books and the exercise, too, but *do try to explain the whole thing in the way you have just learned it!*) - briefly, please...
+
+A1: If multiple measurable things, say A and B (could be more), relate to each other in magnitude to some extent, it is not difficult to imagine A could explain B's change to the degree how strong the relation is (vice versa). Suppose getting the information of B is much harder than that of A, we would benefit from getting an estimation of B by the data of A. To realize this idea, several things need to be settled. Firstly, in real world nothing correlate with each other perfectly, meaning we should get to know how much of B can be explained by A so we can work on that part; secondly, A and B are usually of different unit and having different variance (e.g kg for weight and cm for height), we therefore need to correct this gap. These considerations translate to the idea of Linear Regression model, where we use some formula calculate an intercept (set the starting point from the explainable part) and a slope (correcting their relationship or covariance by the variance of A, because we want to estimate B by A). Then we get an equation (or model) in which we feed a data point of A and get the estimation (or prediction) of B. 
+
+However, we also need to consider if our model is competent in its job. This is done by making the predictions and see how far they are away from the true value (residual, the jargon). If the residual is too large, it's not good. If the residual shows some trends or pattern when plotting against each data points of A, it's not good. This is because we want to explain every bit of explainable part of B using A, this pattern indicates we fail to leverage their relation until nothing but white noise is left. For the every same reason, we don't want to see the distribution of the residual to be non-normal. White noise produces normality while trend gives skewness, so much as nature maintains balance while human breaks it, roughly. 
+
+
+
+
+
+Q2: Did you find the interactive apps useful in understanding the linear regression model?
+
+A2: Yes. It eased the load on my mind in understanding the whole idea tremendously. 
+
+
+*********************************************
+
+Then, show and report (step by step) the **Linear Regression models** you created with the **USHS data**. No need to show them all, pick your best ones (three at least). What kind of conclusions do you make in each of the models? What about the diagnostics, what can you say?
+
+# 1. Preparing 
+
+## 1.1 Packages ready
+
+```{r}
+library(tidyverse)
+library(tidyr)
+library(gapminder) # dataset
+library(finalfit)
+library(broom)
+library(gtsummary)#install.packages("gtsummary")
+#library(sjmic)#install.packages("sjmic")
+library(sjlabelled)#install.packages("sjlabelled")
+library(lubridate)#install.packages("lubridate")
+library(sjlabelled)
+library(psych)
+library(Hmisc)
+library(expss)#install.packages("expss")
+```
+
+## 1.2 data set ready
+
+```{r}
+# Import the data I worked on for weeks
+USHSv2 <- read_csv("USHSv2.csv")
+#Some of the variables I plan to use was not selected into my data set. 
+#I'll get the raw data and merge them.
+USHS <- read.csv("daF3224e.csv", sep = ";") 
+USHS[,c("fsd_no","fsd_vr")] = NULL
+USHSv2 <- left_join(USHS, USHSv2) # USHSv2 is still the name.
+USHSv2 <-USHSv2 %>% mutate(height = height %>%  ff_label("self-reported height"),
+                           weight = weight %>%  ff_label("self-reported weight"),
+                           BMI = BMI %>% ff_label("a indicator base on height and weight"),
+                           Social_wellbeing = Social_wellbeing %>% ff_label("one of the four factors in General Health Scale reflecting wellness of social status"),
+                           Social_engagement = Social_engagement %>% ff_label("one of the four factors in Gernal Health Scale reflecting wellness of social participant"),
+                           Mental_wellbeing = Mental_wellbeing  %>%  ff_label("one of the four factors in Gernal Health Scale reflecting mental health"),
+                           Emotional_wellbeing = Emotional_wellbeing %>% ff_label("one of the four factors in Gernal Health Scale reflecting emotional health"),
+                           Accomplishment = Accomplishment %>% ff_label("one of the three factors in Learning Scales reflecting the positive sense from learning"),
+                           Pressure = Pressure %>% ff_label("one of the three factors in Learning Scales reflecting the learning pressure"),
+                           EXhaustion = EXhaustion %>% ff_label("one of the three factors in Learning Scales reflecting the sense of losing control of study"))
+#select the variables I'm going to use.
+```
+
+## 1.3 Generating new variables for modelling 
+
+### 1.3.1 Generating variable about 1-year medical help seeking practice
+```{r, eval = F}
+
+# questions under k37 collected information about whether and how much medical
+#help seeking behaviors (MHSB) the respondents had for the past one year for 
+#various  type of medical providers. Here I simplified them into whether they  
+#have MHSB for any type of service. 
+#select columns k37s
+
+col_k37s <- USHSv2  %>% select (fsd_id, starts_with("k37"))
+
+#How many types of medical provider he/she saw 1~5 times last year.
+col_k37s <- col_k37s  %>% 
+  rowwise() %>% 
+  mutate(med_seek_face_few =sum(
+    across (starts_with("k37")&contains("_2_")) == 1, na.rm = T)%>%
+      ff_label("medical visits a few times"))
+
+#How many types of medical provider he/she saw >5 times last year.
+#a new variable
+col_k37s <- col_k37s  %>% 
+  rowwise() %>% 
+  mutate(med_seek_face_many =sum(
+    across (starts_with("k37")&contains("_2_")) == 2, na.rm = T) %>%
+      ff_label("medical visits many times"))
+
+#How many types of medical service he/she saw via phone last year.
+#a new variable
+col_k37s <- col_k37s  %>% 
+  rowwise() %>% 
+  mutate(med_seek_phone =sum(
+    across (starts_with("k37")&contains("_3_")) == 3, na.rm = T))%>% 
+  apply_labels(., med_seek_phone = "Medical phone call")
+
+#How many types of medical service he/she saw via internet last year.
+#a new variable
+col_k37s <- col_k37s  %>% 
+  rowwise() %>% 
+  mutate(med_seek_online =sum(
+    across (starts_with("k37")&contains("_4_")) == 4, na.rm = T))%>% 
+    ungroup() %>% 
+  apply_labels(., med_seek_online = "Medical help seeking on-line")
+
+
+#If he/she sought any medical help during last year (yes/no)
+#This is a combination of the four new variables above, if any of them has
+#a value of 1, this new variable also gets a value of 1, or else it gets 0.
+
+col_k37s <- col_k37s  %>% 
+  mutate(med_seek_any = case_when(if_any(starts_with("med_seek"), ~.x != 0)~ "Yes",
+                                  if_all(starts_with("med_seek"), ~.x == 0)~ "No") %>% 
+           factor() %>% 
+           ff_label("any medical help seeking during last year"))
+
+          
+#           sum(across (starts_with("med_seek")), na.rm = T)) %>% 
+#  mutate(med_seek_any = if_else(med_seek_any == 0, 0, 1)) %>% 
+#  ungroup()
+#col_k37s %>% select(med_seek_any)  
+#col_k37s <- col_k37s  %>% 
+#  mutate(med_seek_any = med_seek_any %>%
+#           factor() %>% 
+#           fct_recode("Yes" = "1", "No" = "0") %>% 
+#           ff_label("any medical help seeking during last year"))
+
+USHSv2_col_k37s <- left_join(USHSv2, col_k37s)
+USHSv2_col_k37s %>% select(starts_with("med_seek"))
+write_csv(USHSv2_col_k37s, "USHSv2_col_k37s")
+
+USHSv2_col_k37s %>% select(med_seek_face_many)
+col_k37s %>% select(starts_with("med_seek")) 
+```
+
+Temporary chunk
+```{r}
+USHSv2 <- read_csv("USHSv2_col_k37s")
+```
+
+
+### 1.3.2 Generating variable about length of sedentary hours
+
+```{r}
+#items k42s asked how long do you sit for various purposes in a typical day
+#answers blended hours and minutes. Here I unified their unit into hours. 
+#pass variable names of items under k42 into a vector
+columns <- USHSv2 %>% select(starts_with("k42")) %>% names()
+USHSv2
+#check their variable type, finding they are characters.
+sapply(USHSv2[,columns], class)
+
+#transform into time(period) variable and check if done
+USHSv2[,columns] <- lapply(USHSv2[,columns], function(x)hms(x, quiet = T))
+sapply(USHSv2[,columns], class)
+USHSv2[,columns]
+
+#transform minutes into hours and added up hour with transformed hours
+#hereby 6 variables were generated, each being the length of sitting for
+#a type of behavior, see variable labels
+USHSv2 <- USHSv2 %>% 
+  mutate(sit_study = hour(k42_1)+ minute(k42_1)/60,
+  sit_work = hour(k42_2)+ minute(k42_2)/60,
+  sit_monitor = hour(k42_3)+ minute(k42_3)/60,
+  sit_read = hour(k42_4)+ minute(k42_4)/60,
+  sit_transport = hour(k42_5)+ minute(k42_5)/60,
+  sit_else = hour(k42_6)+ minute(k42_6)/60)
+#  apply_labels(., sit_work = "sitting hours for work",
+#               sit_monitor = "sitting hours before a monitor",
+#               sit_read = "sitting hours for reading",
+#               sit_transport = "sitting hours during transportation",
+#               sit_else = "sitting hours for reasons other than the above")
+
+#Generate a variable about the overall length of sitting for a week of work days, 
+#irrespective of purposes.
+USHSv2 <- USHSv2 %>% 
+  mutate(sedentary_length =rowSums(select(.,starts_with("sit_")), na.rm = T) %>% 
+           ff_label("overall sitting hours for working days per week"))
+
+
+#df <-data.frame(a = c(1,2,3,4), b =c(5,6,7,8), c=c(9,10,11,13))
+#da <- df %>% rowwise() %>% mutate(d = sd(across(everything()))) 
+#da <- da %>% mutate(e=sum(across(c(a, b, c, d))))
+#da
+  
+#aother way to add variable. Keep record here.
+#var_lab(USHSv2$k42_1_hm) = "study sitting time"
+#var_lab(USHSv2$k42_2_hm) = "work sitting time"
+#var_lab(USHSv2$k42_3_hm) = "TV&computer sitting time"
+#var_lab(USHSv2$k42_4_hm) = "reading sitting time"
+#var_lab(USHSv2$k42_5_hm) = "transportation sitting time"
+#var_lab(USHSv2$k42_6_hm) = "other sitting time"
+
+#check if their variable are there
+k42_cols <- USHSv2 %>% select(starts_with("sit")) %>% names()
+k42_cols
+lapply(USHSv2[k42_cols], function(x)var_lab(x))
+
+#check the value
+USHSv2 %>% select(contains("sit"))
+```
+
+### 1.3.3 Labeling variable about physical exercise length
+
+```{r}
+USHSv2 <- USHSv2 %>%
+  mutate(
+         light_exercise_minutes = k40 %>% factor() %>%
+           fct_recode("<15min" = "0", "15-30min" = "1",
+                      "30-60min" = "2", "Over 1h" = "3") %>% 
+           ff_label("length of light aerobic exerciese/day (walk, cycle)"),
+         sweaty_exercise = k41 %>% factor() %>%
+           fct_recode("Not at all/seldom" = "0", "1-3 times/month" = "1",
+                      "Once/week" = "2", "2-3 times/week" = "3",
+                      "4-6 times/week" = "4", "Daily" = "5") %>% 
+          ff_label("sweaty exerciese ≥30 min/day")
+  )
+```
+
+
+### 1.3.4 Labeling variable about food healthiness consideration
+
+```{r}
+USHSv2 <- USHSv2 %>%
+  mutate(buy_healthy_food = k44 %>% factor() %>%
+           fct_recode("Never/very seldom" = "0", "Occassionally" = "1", "Often" = "2") %>% 
+           ff_label("consider food healthiness before purchase"))
+  
+```
+
+### 1.3.5 Labeling variable about alcohol intake
+
+```{r}
+USHSv2 <- USHSv2 %>%
+  mutate(
+       beer_wine_etc = k74 %>% factor() %>%
+           fct_recode("Never" = "0", "Once a month" = "1", 
+                      "2-4 times a month" = "2", "2-3 times a week" = "3",
+                      "4 or more times a week" = "4") %>% 
+         ff_label("alcohol intake"))
+
+```
+
+### 1.3.6 Generating variable about study hours
+
+```{r}
+
+#pass k94s to an object
+col_k94s <- USHSv2 %>% select(., starts_with("k94_")) %>% names()
+
+#change variable type
+USHSv2[,col_k94s] <- lapply(USHSv2[,col_k94s], function(x)as.numeric(x))
+
+#generate variable for hours of supervised study per week
+USHSv2 <- USHSv2 %>% rename("study_supervised" = "k94_1") %>% 
+  apply_labels(k94_1 = "hours of supervised study per week")
+
+#generate variable for hours of supervised study per week
+USHSv2 <- USHSv2 %>% rename("study_independent" = "k94_2") %>% 
+  apply_labels(k94_2 = "hours of independent study per week")
+
+#generate variable for hours of paid work per week
+USHSv2 <- USHSv2 %>% rename("work_paid" = "k94_3") %>% 
+  apply_labels(k94_3 = "hours of paid work per week")
+
+#generate variable for overall hours of study
+USHSv2 <- USHSv2 %>% mutate(study_overall = study_independent + study_supervised %>% 
+                              ff_label("overall hours of study"))
+```
+
+### 1.3.7 Generating variable about dignosed phychological problem
+
+```{r}
+#Questions k6_24(1~3)~k6_27 are about if the respondents have diagnosed psychological problems.
+#The answers could be 1(no), 2(yes) or NA.
+#create a new variable "diagnosed_psyc_disorder" when all of a row of k26_24~37 are NAs, it is assigned value NA; when any of a row of k26_24~37 is 2, it is assigned value 1 (Yes); when all of a row of k26_24~37 is 1, it is assigned value 0 (No)
+USHSv2 <- USHSv2 %>% mutate (diagnosed_psyc_disorder = case_when (if_any (c("k6_24_1", "k6_24_2", "k6_24_3", "k6_25", "k6_26", "k6_27"), ~.x == 2) ~ "1", if_all(c("k6_24_1", "k6_24_2", "k6_24_3", "k6_25", "k6_26", "k6_27"), ~is.na(.x)) ~ NA_character_, TRUE ~ "0"))
+
+#recode the levels.                                                                  
+USHSv2 <- USHSv2 %>%   mutate(diagnosed_psyc_disorder = diagnosed_psyc_disorder %>%
+                                factor() %>% 
+                                fct_recode("Diagnosed PD positive" = "1",
+                                            "Diagnosed PD negative" = "0") %>% 
+                                ff_label("With diagnosed psychological disorder or not"))
+            
+USHSv2 %>%select (k6_24_1, k6_24_2, k6_24_3, k6_25, k6_26, k6_27, diagnosed_psyc_disorder)
+
+```
+
+### 1.3.8 Generating variable about learning disability and well-beings
+
+```{r}
+USHSv2 <- USHSv2 %>%
+  mutate(learndisab = k7 %>% factor() %>%
+           fct_recode("No" = "1", "Yes" = "2") %>% ff_label("Learning Difficulty"),
+         
+         wb_physical = k8_1 %>% factor() %>% 
+           fct_recode("Very poor" = "1", "Poor" = "2", "Fair" = "3", "Good" = "4", "Very good" = "5") %>% 
+           ff_label ("Self-reported physical well-being"),
+         
+         wb_mental = k8_2 %>% factor() %>% 
+           fct_recode("Very poor" = "1", "Poor" = "2", "Fair" = "3", "Good" = "4", "Very good" = "5") %>% 
+           ff_label("Self-reported mental well-being"),
+         
+         wb_social = k8_3 %>% factor() %>% 
+           fct_recode("Very poor" = "1", "Poor" = "2", "Fair" = "3", "Good" = "4", "Very good" = "5") %>% 
+           ff_label("Self-reported social well-being"),
+         
+         wb_overall = k8_1 %>% factor() %>% 
+           fct_recode("Very poor" = "4", "Poor" = "2", "Fair" = "3", "Good" = "4", "Very good" = "5") %>% 
+           ff_label("Self-reported overall well-being"))
+```
+
+### 1.3.9 Generating variable about healthy eating days
+
+Base on the idea that a healthy eating should include fruits, vegetables, whole grains, milk (or milk products) and a variety of protein foods every day (at least every week), and should be low in added sugars, sodium, saturated fats, trans fats, and cholesterol. I defined a healthy lifestyle as eating all types of healthy food ≥ 4 days (k46_1~k46_7) every week and simultaneously eating unhealthy food ≤ 2 days (k46_9 and/or k46_10); defined a balanced diet lifestyle as eating all types of healthy food (k46_1~k46_7 within a week and simultaneously eating unhealthy food ≤ 2 days (k46_9 and/or k46_10); and defined all the others as unbalanced diet lifestyle.  
+
+```{r}
+#eat all types of the healthy food at least 4 days a week
+USHSv2 <- USHSv2 %>%
+  mutate(health_eating_5dyas = case_when(
+                                          if_all(c(k46_1:k46_7), ~.x >= 4) ~ "T",
+                                         if_any(c(k46_1:k46_7), ~is.na(.x))~ NA_character_,
+                                         TRUE ~ "F")%>% 
+           ff_label("eat all types of the healthy food at least 4 days a week")
+                                         )
+#eat all types of the healthy food within a week
+USHSv2 <- USHSv2 %>%
+  mutate(health_eating_all_week = case_when(
+                                          if_all(c(k46_1:k46_7), ~.x >= 1) ~ "T",
+                                         if_any(c(k46_1:k46_7), ~is.na(.x))~ NA_character_,
+                                         TRUE ~ "F") %>% 
+           ff_label("eat all types of the healthy food within a week")
+                                         )
+#eat unhealthy food less than 3 days a week
+USHSv2 <- USHSv2 %>%
+  mutate(health_eating_bad_days = (k46_9+k46_10) %>% ff_label("accumulated days of eating unhealthy food"))
+USHSv2 <- USHSv2 %>%
+  mutate(health_eating_no_bad = case_when(health_eating_bad_days <= 2~"T",
+                                          is.na(health_eating_bad_days) ~ NA_character_,
+                                         health_eating_bad_days > 2~"F") %>% 
+           ff_label("eat unhealthy food less than 3 days a week"))
+ 
+USHSv2 %>% select(k46_9, k46_10, health_eating_bad_days, health_eating_no_bad) 
+USHSv2 %>% count(health_eating_no_bad)
+
+#healthy eating days
+#USHSv2 <- USHSv2 %>%
+#  mutate(health_eating_good_days = rowSums(USHSv2[,c("k46_1","k46_2","k46_3","k46_4","k46_5","k46_6","k46_7")]))
+
+USHSv2 <- USHSv2 %>%
+  mutate(health_eating_good_days = rowSums(select(., k46_1:k46_7)) %>% 
+           ff_label("accumulated days of eating healthy food"))
+
+#Those who satisfy both ≥5 days of all types healthy eat and ≤ 2 days of unhealthy eating 
+#are defined as "unhealthy diet lifestyle"
+#Those who satisfy both  all types healthy eat within a week and ≤ 2 days of unhealthy eating
+#Others are defined as unhealthy diet
+USHSv2 <- USHSv2 %>%
+  mutate(
+    health_diet = case_when(if_all(c(health_eating_5dyas, health_eating_no_bad), ~.x == "T")~"1", 
+                            if_all(c(health_eating_all_week, health_eating_no_bad), ~.x == "T")~"2", 
+                            if_any(c(health_eating_5dyas, health_eating_no_bad), ~is.na(.x))~NA_character_,
+                            TRUE~ "3") %>% fct_recode("healthy diet" = "1",
+                                                      "balanced diet" = "2",
+                                                      "unhealthy diet" = "3") %>% 
+      ff_label("Dietary style"))
+
+
+
+
+USHSv2 %>% select(health_eating_5dyas, health_eating_all_week, health_eating_no_bad, health_diet) %>% filter(health_eating_5dyas == "T",  health_eating_all_week == "T")
+USHSv2  %>% select(k46_1:k46_7, k46_9, k46_10, health_eating_bad_days, health_eating_good_days)
+```
+
+
+
+
+
+```{r}
+# select the variables for linear regression
+
+USHSlm <- USHSv2 %>% select(fsd_id, which(colnames(USHSv2) == "height"):ncol(USHSv2))
+USHSlm 
+USHSlm <- USHSlm %>% mutate(gender = factor (gender) %>%  fct_recode("Male" = "Male"),
+                            Female = "female" %>% ff_label("gender"))
+
+USHSlm <- USHSlm %>% mutate(age = factor (age) %>%  fct_recode("19-21" = "19-21"),
+                            "22-24" = "22-24",
+                            "25-27" = "25-27",
+                            "38-30" = "28-30",
+                            "31-33" = "31-33",
+                            "33+" = "33+") %>% ff_label("age range")
+USHSlm %>% count(BMI.factor)
+USHSlm <- USHSlm %>% mutate(BMI.factor = factor (BMI.factor)  %>% ff_label("BMI range"))
+#USHSlm <- USHSlm %>% mutate(med_seek_face_many = factor (med_seek_face_many)  %>% 
+#                              fct_recode("Yes" = "1",
+#                                         "No" = "0") %>% 
+#                            ff_label("BMI range"))
+
+
+USHSlm <- USHSlm %>% mutate_if(is.character, is.factor)
+
+#SHSlm <- USHSlm %>% select(fsd_id, gender, age, BMI.factor, light_exercise_minutes, sweaty_exercise,                 diagnosed_psyc_disorder, learndisab, #health_diet,                
+#                           height,weight, BMI, Social_wellbeing, Social_engagement, Mental_wellbeing, 
+#                            Emotional_wellbeing, Accomplishment, Pressure, EXhaustion, sedentary_length,
+#                           study_overall, health_eating_bad_days, health_eating_good_days
+#                           )
+
+USHSlm <- USHSlm %>% select(fsd_id, gender, age, BMI.factor, light_exercise_minutes, sweaty_exercise, 
+                 buy_healthy_food, beer_wine_etc, diagnosed_psyc_disorder, learndisab, health_diet, 
+                 height, weight, BMI, Social_wellbeing, Social_engagement, Mental_wellbeing, 
+                 Emotional_wellbeing, Accomplishment, Pressure, EXhaustion, sedentary_length, study_overall, 
+                 health_eating_bad_days, health_eating_good_days, wb_physical, wb_mental, wb_social, wb_overall, med_seek_face_many)
+#inspect the value lables of factor variables
+```
+
+```{r}
+# inspect the distribution of the factor score s of genral heath variables.
+USHSlm %>% select(ends_with("wellbeing"), Social_engagement)
+USHSlm %>% 
+  select(ends_with("wellbeing"), Social_engagement) %>% 
+  pivot_longer(everything(), names_to = "wellbeing_type", values_to = "factor_score") %>% 
+  ggplot(aes(x = factor_score, fill = factor_score))+
+  geom_histogram(bins = 30,  colour = "blue", alpha = 0.1)+
+  facet_wrap(~wellbeing_type)+
+  theme_bw()
+#Emotional_wellbeing and Mental_welling are roughly normally distributed. I am going to use
+#them as dependent variables.
+```
+
+
+```{r}
+fit_emotion1 <- USHSlm %>% 
+  lm(Social_wellbeing ~  diagnosed_psyc_disorder, data = .)
+fit_emotion1 %>%
+  summary() # added by KV
+```
+
+```{r}
+#inspect the correlation of each numeric variables with gernal health variables.
+USHSlm_numeric <- USHSlm %>% select_if(is.numeric)
+USHSlm_numeric
+USHSlm_numeric <- USHSlm %>% select(fsd_id, height, weight, BMI, Social_wellbeing, Social_engagement, Mental_wellbeing, Emotional_wellbeing, Accomplishment, Pressure, EXhaustion, sedentary_length, study_overall, health_eating_bad_days, 
+                         health_eating_good_days)
+cor(USHSlm_numeric[-1], USHSlm_numeric$Social_wellbeing, use = "pairwise.complete.obs") 
+
+cor(USHSlm_numeric[-1], USHSlm_numeric$Emotional_wellbeing, use = "pairwise.complete.obs") 
+
+cor(USHSlm_numeric[-1], USHSlm_numeric$Mental_wellbeing, use = "pairwise.complete.obs") 
+
+cor(USHSlm_numeric[-1], USHSlm_numeric$Social_engagement, use = "pairwise.complete.obs") 
+
+cor(USHSlm_numeric[-1], USHSlm_numeric$EXhaustion, use = "pairwise.complete.obs") 
+
+cor(USHSlm_numeric[-1], USHSlm_numeric$Accomplishment, use = "pairwise.complete.obs") 
+
+cor(USHSlm_numeric[-1], USHSlm_numeric$Pressure, use = "pairwise.complete.obs") 
+
+```
+```{r}
+#examine the out-liers
+
+  pivot_longer(USHSlm_numeric, c(2:ncol(USHSlm_numeric)), names_to = "variable", values_to = "value", values_transform = list(val = as.numeric)) %>% 
+   ggplot(aes(x = value))+
+  geom_boxplot()+
+   facet_wrap(~variable, nrow = 3, scale = "free")
+
+?pivot_longer
+
+
+#Potential outliers from : a. sedentary_length, reason: two data points are over 40 hours (per 5 working days), 
+#which is roughly impossible. Commonly, a student is impossible to sit longer.than 40 hours for 5 working days.
+#Potential outliers from : b. overall study, multiple data points are larger than 105 hours (per week), which is 
+#basically impossible sinece commonly a student will not study for 105 hours per week. 
+
+#find out which data points having a sedentary_length>40 hours.
+USHSlm %>% filter (sedentary_length>40)
+#inspect if any mistake in data processing
+USHSv2 %>% filter (fsd_id %in% c(899,1738)) %>% select(starts_with("k42"), starts_with("sit"), sedentary_length)
+#Not any mistake was found
+#remove them by replacing their sedentary_length to NA.
+USHSlm[c(899,1738), "sedentary_length"] <- NA
+
+#find out which data points having a study_overall>40 hours.
+USHSlm %>% filter (study_overall>105) %>% select(fsd_id, study_overall) %>% arrange(study_overall)
+rownumberfilter <- which(USHSlm$study_overall > 105)
+USHSlm[rownumberfilter, "study_overall"] <- NA
+
+#inspect bar plot again
+
+
+#no variable has considerable outliers any more. 
+```
+
+
+```{r}
+USHSlm %>% select_if(is.factor) %>% sapply (., function(x)get_labels(x))
+```
+
+```{r}
+#
+USHSlm %>% ggplot(aes(x = Pressure, y = Emotional_wellbeing, colour = diagnosed_psyc_disorder))+
+  geom_point()+
+  geom_smooth(method = "lm")
+
+USHSlm %>% ggplot(aes(x = EXhaustion, y = Mental_wellbeing, colour = health_diet))+
+  geom_point()+
+  geom_smooth(method = "lm")
+```
+
+
+```{r}
+fit_emotion1 <- USHSlm %>% lm(Mental_wellbeing~Social_wellbeing + Pressure, data = .)
+fit_emotion1 %>% summary() 
+
+fit_emotion2 <- USHSlm %>% lm(Mental_wellbeing~Social_engagement + Social_wellbeing, data = .)
+fit_emotion2 %>% summary() 
+```
+
+
+```{r}
+USHSlm %>% names
+dependent <- "Mental_wellbeing"
+#explanatory <- c( "Pressure", "BMI.factor", "Social_wellbeing", "Accomplishment")
+explanatory <- c( "Social_wellbeing", "Social_engagement")
+fit_mental <- USHSlm %>% 
+  finalfit(dependent, explanatory, metrics = TRUE)
+
+fit_mental %>% knitr::kable()
+```
+
+
+```{r}
+USHSlm <- USHSlm  %>%  mutate(Social = Social_engagement+Social_wellbeing)
+USHSlm  %>% select(sedentary_length)
+
+fit_mental <- USHSlm %>% lm(Mental_wellbeing~Social*Emotional_wellbeing, data = .)
+fit_mental %>% summary()
+
+fit_mental <- USHSlm %>% lm(BMI~ sedentary_length+gender+light_exercise_minutes , data =.)
+fit_mental %>% summary()
+```
+
+
+```{r}
+enframe(get_label(USHSlm))
+```
+
+
+
+
+*******************************************************
+
+**GOOOOOD JOB!!**
+
+Just knit this and SUBMIT the result (HTML) as your report of the **Assignment 3** in Moodle. 

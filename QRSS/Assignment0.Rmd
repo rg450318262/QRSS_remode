@@ -1,0 +1,159 @@
+bplist00?_WebMainResource?	
+^WebResourceURL_WebResourceFrameName_WebResourceData_WebResourceMIMEType_WebResourceTextEncodingName_Xhttps://moodle.helsinki.fi/pluginfile.php/4329149/mod_resource/content/3/Assignment0.RmdPO	<html><head></head><body><pre style="word-wrap: break-word; white-space: pre-wrap;">---
+title: "Quantitative Research Skills 2022, Assignment 0"
+subtitle: "Getting started with RStudio and R Markdown, visualisation, data wrangling"
+
+author: "Write your name here"
+date: "Write the date here"
+
+output: 
+  html_document:
+    theme: flatly
+    highlight: haddock
+    toc: true
+    toc_depth: 2
+    number_section: false
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Assignment 0: Getting started with RStudio and R Markdown, visualisation, data wrangling
+
+As soon as you have completed the **Hands-On Exercise 0**, it should be pretty easy to work through this Assignment 0 and submit the resulting web page (.html file) in the Moodle.
+
+# RHDS Chapter 4: Different types of plots
+
+First of all, what is your feeling now, after going through the first Hands-On Exercise? :) Please write a few sentences about your experiences with RStudio, R Markdown etc.!
+
+I am feeling... (do continue from here!) :)
+
+I am feeling R is a lot more efficient than SPSS. Especially in R we are able to select those columns and rows of interest into one new dat aset without much ado, leading to the subsequent analysis super clear and easy. However, in SPSS although filtering rows is possible in command, selecting variables into a new data set means manually copying those columns and saving into a separate file. It's labrious and prevents me from doing it too often. 
+
+I am feeling R is a bit tricky since we can realize one function via different ways, like spread() and pivot_wider(). Sometimes I spend time learning a new function only to find I am already able to do that in a much easier way. This is a bit annoying. But I think over time I will not find it a problem.
+
+As I found there might be several different packages performing similar statistical tests, such as t.test() and summary_factorlist(), I am feeling a bit worried if all the authors correctly coded the formula of the tests. What if they made mistakes and we don't even know? 
+
+I am feeling the idea of ggplot that slice a statistial grap into differnt components and deal with one of them each time is genious. I used to use a Mac-based data visualisation tool DATAGRAPH, and I just realized that DATAGRAPH is actually ripping of ggplot's idea (although it is not code-based)
+
+
+
+
+**************************************
+
+Then, what were your favourite graphs? Choose two or three of those and re-create them here! (So, copy the mecessary R code from the R Markdown sheet of the Hands-On exercise 0, activate them and write some freeform comments, too. Remember to include the necessary `library` functions and the R code for accessing the Gapminder data set.
+
+My favourite graphs were...
+
+
+
+
+
+
+**************************************
+
+Use as many R code chunks as you need. Here is the first empty one for you: (you can get more by copy-pasting or using the green button above the editor area in RStudio; just choose R from that menu)
+
+```{r}
+library(tidyverse)
+library(finalfit) 
+library(gapminder)
+library(broom)
+library(patchwork)
+meldata <-  boot::melanoma
+meldata$age  %>%  
+  summary() %>% 
+  tidy()
+
+exp_age1 <- meldata %>% 
+  ggplot(aes(x = age)) +
+  geom_histogram(bins = 20, fill = "deepskyblue", colour = "black", size = 0.3, alpha = 0.3)
+
+
+exp_age2 <- meldata %>% 
+  ggplot(aes(sample = age)) +
+  geom_qq(colour = "black", size = 1, shape = 1) +
+  geom_qq_line(colour = "blue")
+
+exp_age3 <- meldata %>% 
+  mutate (age.label = "age") %>% 
+  ggplot (aes(x = age.label, y = age)) +
+  geom_boxplot() +
+  xlab("") +
+  ylab("")
+  
+exp_age1|exp_age2|exp_age3
+```
+
+```{r}
+meldata <- meldata %>% 
+  mutate(age.factor = 
+           age %>% 
+           cut (
+             breaks = c(4,20,40,60,95), include.lowest = TRUE) %>% 
+               fct_recode ("≤20"          = "[4, 20]",
+                           "21 to 40"     = "(20, 40]",
+                           "41 to 60"     = "(40, 60]",
+                           ">60"         = "(60,95]") %>% 
+               ff_label("Age(years)")
+  )
+meldata <- meldata %>% 
+  mutate(sex.factor = factor (sex) %>%    #an alternative
+           fct_recode (
+             "Female" = "0",
+             "Male"   = "1"
+           ) %>% 
+           ff_label ("sex"),
+         ulcer.factor = factor (ulcer) %>% 
+           fct_recode (
+             "Absent"  =  "0",
+             "Present" =  "1"
+           ) %>% 
+           ff_label("Ulcerated tumor"),
+         status.factor = factor(status) %>% 
+           fct_recode(
+             "Died melanoma"  =  "1",
+             "Alive"          =  "2",
+             "Died - Other causes"  =  "3") %>% 
+           ff_label ("Status")
+           )
+p1  <-  meldata  %>%  
+  ggplot(aes(x = ulcer.factor, fill=status.factor)) + 
+  geom_bar(position = position_stack(reverse = TRUE)) +
+  facet_grid(sex.factor ~ age.factor) + 
+  theme(legend.position = "none")
+
+p2  <-  meldata  %>%  
+  ggplot(aes(x = ulcer.factor, fill=status.factor)) + 
+  geom_bar(position = position_fill(reverse = TRUE)) +
+  facet_grid(sex.factor ~ age.factor)+ 
+  theme(legend.position = "bottom") +
+  ylab("proportion") # this line was missing in the book
+
+p1 / p2
+```
+**************************************
+
+# RHDS Chapter 2: R basics
+
+So, did you get familiar with the R operations included in Chapter 2?
+Yes.
+
+Please reflect a bit: What was difficult to understand? What was easy? 
+
+Understanding operator "%>%" takes some brain cells.
+It's a bit not so straightforward that sometimes different functions requires different style of augment. For example, in unique() we have to use "$" outside the brackets for selecting a variable ("gbd_short$cause %>% unique()"), while when using "mutate()", the varible name should be filled inside the brackets (typesdata %>% mutate(measurement/2)). 
+
+"is.na()" is a very good feature. It makes dealing with NA much easier. But in real world, when collecting data I am used to fill in a special number (like 9999) to represent NA so that I will not mix it with the points I forgot to type in. Up until now, I have not got how to set a number, like 9999, as a default NA.
+
+Feeling good? Everything working OK? Ready to proceed forward?
+
+Feel good. Every works OK except for the fact that I am starting to forget the r functions I spent days to work with. But I think this is a typical learning curve for everything. I am ready to get it going.
+
+**************************************
+
+**GOOD JOB! And GOOD START!**
+
+You should be ready to KNIT this document and SUBMIT the result (.html file) as your **Assignment 0 in Moodle**, which shows that you completed the *Getting started with RStudio and R Markdown* part (an, in passing, learned a lot!) **Great!**
+
+</pre></body></html>_text/x-markdownUUTF-8

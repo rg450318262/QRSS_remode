@@ -1,0 +1,343 @@
+---
+title: "Quantitative Research Skills 2022, Assignment 1"
+author: "Rong Guang"
+date: "18092022e"
+output:
+  html_document:
+    theme: journal
+    highlight: haddock
+    toc: yes
+    toc_depth: 2
+    number_section: no
+  pdf_document:
+    toc: yes
+    toc_depth: '2'
+subtitle: Wrangling, visualising, exploring, and analysing data
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Assignment 1: Wrangling, visualising, exploring, and analysing data
+
+Begin working with this when you have completed both the **Hands-On Exercise 1a &amp; Hands-On Exercise 1b**.
+
+**Assignment 1** gathers together topics from the Hands-On Exercises 0 and 1a (working through the RHDS chapters 1,4,2,6,8,3) as well as 1b (getting familiar with the USHS data, the University Student Health Survey).
+
+There were three chapters of RHDS (6,8,3) to be studied by 'active reading' in the Hands-On Exercise 1a (all the R codes were readily given, so you could focus on activating the codes and trying to understand the codes and their output, while reading the surrounding texts of the RHDS book).
+
+The ultimate goal at this stage is to take advantage of the R codes of the RHDS book with the USHS data.
+
+In the end (after Week 3), you should submit the knitted report (web page, .html file) in the Moodle.
+
+*******************************************************************************
+
+Now, let us start from a brief summary of the three RHDS chapters. You should give answers (A) to some questions (Q) and reflect your experiences related to the chapters:
+
+# RHDS Chapter 6. Working with continuous outcome variables
+
+Q1: What is the difference between t-test and analysis of variance?
+
+A1: T-test tests if difference exists between two groups (two sample dependent t test) or one group and a given value (one sample t test), while ANOVA tests if any difference exist among ≥3 groups. 
+
+Q2: It is often assumed that observations of data are "independent". What does it mean?
+
+A2:  It means data points are not related to each another. For example, when randomly sampling type II diabetic patients from a population, any sampled subject's Glycated hemoglobin (GH) is not to any extent influenced by other subjects. These data points are independent. On the contrary, if we sampled diabetic couples, the GH level between a couple could be inter-related, since they might share lifestyle. They are not independent.
+
+Q3: Why should one be especially careful with multiple testing?
+
+A3: We should be careful because without doing it our risk to err increases. Without correcting for multiple comparison, the probability of running into Type I error could swell. Cutoff for significance (often p≤0.05) is a consensus-based value, which means even if we get a very small p, such as 0.001, we still have 1% chance to be mistakenly rejecting null hypothesis. It is just that researchers in a specific area agreed upon a p small enough that they would take the risk. However, when testing between more than one pair of data points in one study, the risk to make mistake also adds up with each new pair introduced, resulting in deceptive significant results. Further, we should be careful because it is tempting not to do so, since nowadays almost every study tests more than one hypothesis/outcome and correcting for multiple comparison always makes "significant" results fall insignificant.
+
+
+Please reflect: What was difficult to understand in Chapter 6? What was easy? 
+
+Difficult:
+-to understand why more than two groups mean another statistical test, while more than 3 or more groups always stick to one types of statistical tests.
+- to understand %in%
+
+Easy:
+-Plot the data
+-Finalfit package makes things easier.
+
+(We will come back to these topics later, with Linear Regression.)
+
+
+# RHDS Chapter 8. Working with categorical outcome variables
+
+Q4: What is meant in R by a factor (in this context)?
+
+A4: Quote from RHDS, a factor is "a fixed set of names/strings or numbers". To me, I understand it as a categorical variable with two to a finite number of possible categories, no matter they have order (like high, middle, low) or not (such as east, west, south, north).
+
+Q5: Is it possible to convert a categorical variable to a continuous variable? Please explain.
+
+A5: Yes and no. No because continuous variable carries more information than a categorical variable, such as information about the distance between each adjacent data point (for continuous data this distance is always the same, while for categorical data, it often is not). We can downgrade more-information to less-information, but we are not able to do the opposite. Yes is because as far as I know (my background is medicine), some researchers believed data from properly defined Likert scale (which is ordinal/categorical) with very small granularity can be deemed as being equally distanced and hence used as continuous data, such as 10-item VAS scale for measuring pain sensation. Note that not all medical researchers agree upon this.
+
+Q6: What is the point of a chi-square test related to a table of two categorical variables?
+
+A6: It is to determine whether two categorical variables are independent in a given population. When we link  category A to a new category B, data from A (such as number of subjects) is similarly distributed under the categorizing of B, we could get that the presence of A does not influence the presence of B. But in real word, the numbers are always different due to  random error. Chi square test helps us tell if the difference we observed comes from random error or some "true" difference.
+
+
+Please reflect: What was difficult to understand in Chapter 8? What was easy? 
+
+Difficult:
+-To memorize when to use Fisher Exact Test (should R not remind us)
+- Recoding the data is difficult to me in terms of its workload. I used to run into data with a variable having more than 100 levels. Imagining to recode it in the way we learnt already gives me creep.
+
+Easy:
+-Plotting is easy, since it's the first thing I learned and I have practiced a lot. And because it is intuitive.
+-Finalfit makes things easier. Thanks to it.
+
+(We will come back to these topics later, with Logistic Regression.)
+
+
+# RHDS Chapter 3: Summarising data
+
+Please reflect: What was difficult to understand in Chapter 3? What was easy? 
+
+Difficult:
+-Understanding reshaping the data killed quite a number of my brain cells.
+-Group_by is not too hard, but I find it a bit trickier to memorize ungroup when necessary.
+Easy: 
+-Select (), arrange(), slice(), summarise() and mutate() are easy because they are very straightforward. 
+
+
+
+*******************************************************************************
+
+# Exploring and getting familiar with the USHS data
+
+What did you find? Give some examples here! Summaries? Plots? What else?
+
+Copy your best code chunks here and make sure that they work (beginning from
+the selection of the USHS subset data). Remember the necessary libraries, too.
+
+
+# I examined the following hypotheses: 
+1. Students with different sexes might have different mood status; 
+2. Students with different ranges of Body Mass Index (BMI) might have different mood status;
+3. Students with different sexes might have different health status;
+4. Students with different ranges of Body Mass Index (BMI) might have different health status;
+5. Students with different sexes might have different distribuation of BMI ranges.
+```{r}
+# to test the hypotheses, new variables need to be generated, including: gender.factor, BMI(weight(kg)/height(m)^2), BMI.factor(underweight:<18.5, normal weight: ~25, overweight: ~30; obese: >30), mood(average across scores of mood-related items under k22), health (average across scores of items 23 to 34)
+##load package
+library(tidyverse)
+library(finalfit)
+library(broom)
+library(patchwork)
+```
+
+```{r}
+## reduce the dataset to a smaller set with relevant variables.
+USHS <-  read_csv2("daF3224e.csv")
+USHSpart  <-  USHS  %>% 
+  select(
+    fsd_id,
+    k1, # age
+    k2, # gender (1=male, 2=female, 3=not known/unspecified), NA (missing)
+    bv1, # university (from register), see label info! (40 different codes)
+    bv3, # field of study (from register), various codes
+    bv6, # higher educ institution (0=uni applied sciences, 1=university)
+    k7, # learning disability
+    k8_1:k8_4, # current well-being
+    k9_1:k9_30, # symptoms (past month), skip 31 ("other") due missingness
+    k11a, k11b, # height (cm) a=male, b=female
+    k12a, k12b, # weight (kg) a=male, b=female
+    k13, # what to you think of your weight? (1=under,5=over)
+    k14:k20, # various questions (mostly yes/no)
+    k21_1:k21_9, # various things in life (obs: originally wrong scale! "3" -&gt; NA!)
+    k22_1:k22_10, # how often (felt various things) (obs: 2 &amp; 3 should be inversed! see quest.)
+    k23:k34, # General Health Questionnaire (1-4, directions already OK)
+   ) # (end of select!)
+```
+
+```{r}
+## Generate height, weight and gender.factor 
+USHSv2  <-  USHSpart  %>% 
+  mutate(height = if_else(is.na(k11a), k11b, k11a), #merge height variables of two sexes into one
+         weight = if_else(is.na(k12a), k12b, k12a), #merge weight variables of two sexes into one
+         gender = k2  %>%  factor()  %>%  fct_recode("Male" = "1",
+                                                 "Female" = "2",
+                                                 "Not known" = "3") )#add variable name and level label to gender variable
+        
+```
+
+```{r}
+## Generate BMI and BMI.factor
+USHSv2 <- USHSv2 %>% mutate(BMI = weight/(height/100)^2) # adopting the formula of BMI
+USHSv2 %>% select(height, weight, BMI) %>% head # examine the data
+USHSv2 <- USHSv2 %>% mutate(BMI.factor = BMI %>%  #turn BMI into factor and add labels(underweight:<18.5,                                                   #normal weight: ~25, overweight: ~30; obese: >30)
+                    cut(breaks=c(1,18.5,25,30,100), include.lowest = T) %>% 
+                    fct_recode("Underweight" = "[1,18.5]",
+                               "Normal weight" = "(18.5,25]",
+                               "Overweight" = "(25,30]",
+                               "Obese" = "(30,100]") %>% 
+                    ff_label("BMI ranges"))
+```
+
+```{r}
+##Generate Mood(average across scores of mood-related items under k22)
+USHSv2  %>% 
+  select(k22_2, k22_3)  %>% 
+  summary() # copy and save the result somewhere to compare it below!
+
+
+
+USHSv2  <-  USHSv2  %>%  # recode the values (NAs will remain as NAs),
+  mutate(                # save the result to a new variable (k22_2inv):
+    k22_2inv = 
+      case_when(
+      k22_2 == 0 ~ 4,
+      k22_2 == 1 ~ 3,
+      k22_2 == 2 ~ 2,
+      k22_2 == 3 ~ 1,
+      k22_2 == 4 ~ 0
+      )
+  )
+USHSv2 <- USHSv2 %>% 
+  mutate(k22_3inv = case_when(k22_3 == 0 ~ 4,
+                           k22_3 == 1 ~ 3,
+                           k22_3 == 2 ~ 2,
+                           k22_3 == 3 ~ 1,
+                           k22_3 == 4 ~ 0
+                           )
+         )
+
+USHSv2 <- USHSv2 %>% 
+  mutate (mood = rowMeans(across(c(k22_1, k22_5, k22_8, k22_9), rm.na = T)))
+```
+
+```{r}
+##Generate Heath(average across scores of items 23 to 34)
+
+USHSv2 <- USHSv2 %>% 
+  mutate(
+    k23inv = 5-k23, 
+    k25inv = 5-k25, 
+    k26inv = 5-k26, 
+    k29inv = 5-k29, 
+    k30inv = 5-k30, 
+    k34inv = 5-k34
+    ) #items that need to be reversed: 23,25,26,29,30,34
+
+USHSv2 <- USHSv2 %>% mutate(health = rowMeans(   #calculate row means for items 23 to 34 as "health" 
+  across(
+    c(k23inv, k24, k25inv, k26inv, k27, k28, k29inv, k30inv, k31, k32, k33, k34inv)
+    )
+  )
+  )  
+```
+
+```{r}
+## Have a look at the generated variables
+USHSv2 %>% select(height, weight, gender, BMI, BMI.factor, mood, health) %>% head
+
+```
+
+```{r}
+#examine the presumption for statistical test
+#Independency--Base on my domain knowledge and understanding of how the data was sampled, the presumption of independent data is satisfied
+
+```
+
+```{r}
+#Normality for mood
+USHSv2 %>% filter (!is.na(gender), !is.na(BMI.factor)) %>% 
+  ggplot(aes(x = mood)) +
+  geom_histogram(binwidth = 0.5)
+#Conclusion
+#Base on the distribution, the normality assumption for overall mood is violated.                        #Non-parametric tests will be used.  
+
+```
+
+```{r}
+#Normality for heath
+USHSv2 %>% filter (!is.na(gender), !is.na(BMI.factor)) %>% 
+  ggplot(aes(x = health)) +
+  geom_histogram(binwidth = 0.2)    
+#Conclusion
+#Base on the distribution, the normality assumption for overall health is satisfied                       #parametric tests will be used.  
+```
+
+```{r}
+#Normality for mood by gender and BMI ranges
+USHSv2 %>% filter (!is.na(gender), !is.na(BMI.factor)) %>% 
+  ggplot(aes(x = mood)) +
+  geom_histogram(binwidth = 0.3)+
+  facet_grid(BMI.factor~gender)
+#Conclusion
+#Base on the distribution, the normality assumption for mood by gender and                               #BMI ranges is violated. Non-parametric tests will be used.
+```
+
+```{r}
+#Normality for health by gender and BMI ranges
+USHSv2 %>% filter (!is.na(gender), !is.na(BMI.factor)) %>% 
+  ggplot(aes(x = health)) +
+  geom_histogram()+
+  facet_grid(BMI.factor~gender)
+
+#Conclusion
+#Base on the distribution, the normality assumption for health by gender a                               #and BMI ranges is violated. Non-parametric tests will be used.
+```
+
+```{r}
+# test the following hypotheses:
+#1. Students with different sexes might have different mood status; 
+#2. Students with different ranges of Body Mass Index (BMI) might have different mood status;
+
+t1 <- USHSv2 %>% 
+  summary_factorlist(dependent = "mood", 
+                     explanatory = c("gender", "BMI.factor"), 
+                     cont_nonpara = c(1,2), 
+                     p = T)
+  knitr::kable(t1, align =c("l", "l", "r", "r", "r"))
+#Conclusion
+#Male students have better mood status than female students (P<0.001)
+#Students in different BMI ranges showed difference in mood status (p=0.012), multiple comparison is warranted for where the difference lies in. 
+pairwise.t.test(USHSv2$mood, USHSv2$BMI.factor,
+                p.adjust.method = "bonferroni") %>% tidy()
+#Conclusion
+#Obese students have lower mood than normal BMI students.
+```
+
+```{r}
+# test the following hypotheses:
+#3. Students with different sexes might have different health status;
+#4. Students with different ranges of Body Mass Index (BMI) might have different health status;
+
+t2 <- USHSv2 %>%
+  filter(!is.na(health)) %>% 
+  summary_factorlist(dependent = "health", 
+                     explanatory = c("gender", "BMI.factor"), 
+                     p = T, digits = c(3,3,5,3,3))
+  knitr::kable(t2, "simple", align =c("l", "l", "r", "r", "r"))
+  
+#Conclusion
+#Male students have better mood status than female students (P<0.00001)
+#Students in different BMI ranges showed no difference in mood status (p=25565).
+```
+
+```{r}
+# test the following hypotheses:
+#5. Students with different sexes might have different distribuation of BMI ranges.
+t3 <- USHSv2 %>% filter(!is.na(health), !is.na(BMI.factor)) %>% 
+  summary_factorlist(dependent = "BMI.factor", explanatory = "gender", p = T, p_cat = "chisq")
+knitr::kable(t3, align =c("l", "l", "r", "r", "r", "r", "r"))
+USHSv2 %>% filter(!is.na(gender)) %>% 
+  ggplot(aes(x = gender, fill = BMI.factor)) +
+  geom_bar(position = "fill")
+
+#Conclusion
+#Female students are more likely to be normal weigh and less likely to be obese than male students.
+```
+
+
+*******************************************************************************
+
+
+**VERY GOOD JOB!!**
+
+In the end, you should be ready to KNIT this document and SUBMIT the result (.html file) as your report of the **Assignment 1** in Moodle. I am sure you learned a lot! **Awesome!**
+
+
+</pre></body></html>_text/x-markdownUUTF-8

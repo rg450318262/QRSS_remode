@@ -1,0 +1,400 @@
+---
+title: "Quantitative Research Skills 2022, Assignment 3"
+subtitle: "Linear Regression"
+
+author: "Write your name here"
+date: "Write the date here"
+
+output: 
+  html_document:
+    theme: flatly
+    highlight: haddock
+    toc: true
+    toc_depth: 2
+    number_section: false
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE, warning = F)
+```
+
+# Assignment 3: Linear Regression
+
+Begin working with this when you have completed the **Hands-On Exercise 3**.
+
+Q1: Describe the idea of the Linear Regression and the procedure of creating, testing, and diagnosing a Linear Regression model **in your own words:** (of course you may use words from the books and the exercise, too, but *do try to explain the whole thing in the way you have just learned it!*) - briefly, please...
+
+A1: If multiple measurable things, say A and B (could be more), relate to each other in magnitude to some extent, it is not difficult to imagine A could explain B's change to the degree how strong the relation is (vice versa). Suppose getting the information of B is much harder than that of A, we would benefit from getting an estimation of B by the data of A. To realize this idea, several things need to be settled. Firstly, in real world nothing correlate with each other perfectly, meaning we should get to know how much of B can be explained by A so we can work on that part; secondly, A and B are usually of different unit and having different variance (e.g kg for weight and cm for height), we therefore need to correct this gap. These considerations translate to the idea of Linear Regression model, where we use some formula calculate an intercept (set the starting point from the explainable part) and a slope (correcting their relationship or covariance by the variance of A, because we want to estimate B by A). Then we get an equation (or model) in which we feed a data point of A and get the estimation (or prediction) of B. 
+
+However, we also need to consider if our model is competent in its job. This is done by making the predictions and see how far they are away from the true value (residual, the jargon). If the residual is too large, it's not good. If the residual shows some trends or pattern when plotting against each data points of A, it's not good. This is because we want to explain every bit of explainable part of B using A, this pattern indicates we fail to leverage their relation until nothing but white noise is left. For the every same reason, we don't want to see the distribution of the residual to be non-normal. White noise produces normality while trend gives skewness, so much as nature maintains balance while human breaks it, roughly. 
+
+
+
+
+
+Q2: Did you find the interactive apps useful in understanding the linear regression model?
+
+A2: Yes. It eased the load on my mind in understanding the whole idea tremendously. 
+
+
+*********************************************
+
+Then, show and report (step by step) the **Linear Regression models** you created with the **USHS data**. No need to show them all, pick your best ones (three at least). What kind of conclusions do you make in each of the models? What about the diagnostics, what can you say?
+
+# 1. Preparing 
+
+## 1.1 Packages ready
+
+```{r}
+library(tidyverse)
+library(tidyr)
+library(gapminder) # dataset
+library(finalfit)
+library(broom)
+library(gtsummary)#install.packages("gtsummary")
+#library(sjmic)#install.packages("sjmic")
+library(sjlabelled)#install.packages("sjlabelled")
+library(lubridate)#install.packages("lubridate")
+library(sjlabelled)
+library(psych)
+library(Hmisc)
+library(expss)#install.packages("expss")
+library(patchwork)
+library(ggfortify)
+```
+
+## 1.2 data set ready
+### 1.2.1 merging data sets
+```{r}
+# Import the data I worked on for weeks
+USHSv2 <- read_csv("USHSv2.csv")
+#Some of the variables I plan to use was not selected into my data set. 
+#I'll get the raw data and merge them.
+USHS <- read.csv("daF3224e.csv", sep = ";") 
+USHS[,c("fsd_no","fsd_vr")] = NULL
+USHSv2 <- left_join(USHS, USHSv2) # USHSv2 is still the name.
+USHSv2 <-USHSv2 %>% mutate(height = height %>%  ff_label("self-reported height"),
+                           weight = weight %>%  ff_label("self-reported weight"),
+                           BMI = BMI %>% ff_label("a indicator base on height and weight"),
+                           Social_wellbeing = Social_wellbeing %>% 
+                             ff_label(
+                               "one of the four factors in General Health Scale reflecting wellness of social status"),
+                           Social_engagement = Social_engagement %>% 
+                             ff_label(
+                               "one of the four factors in Gernal Health Scale reflecting wellness of social participant"),
+                           Mental_wellbeing = Mental_wellbeing  %>%  
+                             ff_label(
+                               "one of the four factors in Gernal Health Scale reflecting mental health"),
+                           Emotional_wellbeing = Emotional_wellbeing %>% 
+                             ff_label(
+                               "one of the four factors in Gernal Health Scale reflecting emotional health"),
+                           Accomplishment = Accomplishment %>% 
+                             ff_label(
+                               "one of the three factors in Learning Scales reflecting the positive sense from learning"),
+                           Pressure = Pressure %>% ff_label(
+                             "one of the three factors in Learning Scales reflecting the learning pressure"),
+                           EXhaustion = EXhaustion %>% ff_label(
+                             "one of the three factors in Learning Scales reflecting the sense of losing control of study"))
+```
+### 1.2.2 Sum up social-wellbeing and social-engagement into one variable Social
+```{r}
+USHSv2 <- USHSv2  %>%  mutate(Social = Social_engagement+Social_wellbeing)
+```
+
+
+
+### 1.2.3 Generate variable about length of sedentary hours
+
+```{r}
+#items k42s asked how long do you sit for various purposes in a typical day
+#answers blended hours and minutes. Here I unified their unit into hours. 
+#pass variable names of items under k42 into a vector
+columns <- USHSv2 %>% select(starts_with("k42")) %>% names()
+
+#check their variable type, finding out they are characters.
+sapply(USHSv2[,columns], class)
+#transform into time(period) variable and check if done
+USHSv2[,columns] <- lapply(USHSv2[,columns], function(x)hm(x, quiet = T))
+sapply(USHSv2[,columns], class)
+#transform minutes into hours and added up hour with transformed hours
+#hereby 6 variables were generated, each being the length of sitting for
+#a type of behavior, see variable labels
+USHSv2 <- USHSv2 %>% 
+  mutate(sit_study = hour(k42_1)+ minute(k42_1)/60,
+  sit_work = hour(k42_2)+ minute(k42_2)/60,
+  sit_monitor = hour(k42_3)+ minute(k42_3)/60,
+  sit_read = hour(k42_4)+ minute(k42_4)/60,
+  sit_transport = hour(k42_5)+ minute(k42_5)/60,
+  sit_else = hour(k42_6)+ minute(k42_6)/60)
+
+#Generate a variable about the overall length of sitting for a week of work days, 
+#irrespective of purposes.
+USHSv2 <- USHSv2 %>% 
+  mutate(sedentary_length =rowSums(select(.,starts_with("sit_")), na.rm = T) %>% 
+           ff_label("overall sitting hours for working days per week"))
+
+```
+### 1.2.4   Generate variable about light and heavy exercise
+
+```{r}
+USHSv2 <- USHSv2 %>%
+  mutate(
+         light_exercise_minutes = k40 %>% factor() %>%
+           fct_recode("<15min" = "0", "15-30min" = "1",
+                      "30-60min" = "2", "Over 1h" = "3") %>% 
+           ff_label("length of light aerobic exerciese/day (walk, cycle)"),
+         sweaty_exercise = k41 %>% factor() %>%
+           fct_recode("Not at all/seldom" = "0", "1-3 times/month" = "1",
+                      "Once/week" = "2", "2-3 times/week" = "3",
+                      "4-6 times/week" = "4", "Daily" = "5") %>% 
+          ff_label("sweaty exerciese ≥30 min/day")
+  )
+```
+
+### 1.3 select the variables to be used into a new data set "USHSlm"
+
+```{r}
+USHSlm <- USHSv2 %>% select(fsd_id, which(colnames(USHSv2) == "height"):ncol(USHSv2), -starts_with("sit"))
+```
+
+# 2. Data cleaning
+
+## 2.1 Check variable type
+
+```{r}
+#Check variable type
+USHSlm %>% sapply(function(x)class(x)) %>% enframe
+#convert character to factor
+USHSlm <- USHSlm %>% mutate(gender = gender %>% factor(),
+                            age = age %>% factor(),
+                            BMI.factor= BMI.factor %>% factor()
+                            )
+```
+
+## 2.2 Check counts of categorical factors
+
+```{r}
+#check levels of factor variable
+USHSlm %>% select_if(is.factor) %>%lapply(function(x)levels(x))
+
+#check the coutns of levels 
+USHSlm %>% select_if(is.factor) %>%lapply(function(x)table(x))
+```
+
+## 2.3 Check the continuous variables
+
+```{r}
+USHSlm %>% 
+  select_if(is.numeric) %>%
+  pivot_longer(everything(), names_to = "variable", values_to = "value") %>% 
+  ggplot(aes(x = value)) +
+  geom_boxplot() +
+  facet_wrap(~variable, scales = "free")
+#Potential out-liers were found in sedentary_length: two data points are over 
+#40 hours (per 5 working days), which is roughly impossible. Commonly, a 
+#student is impossible to sit longer.than 40 hours for 5 working days.
+#They might have misread the item and fill in base on 7 days or a month. 
+
+#find out which data points having a sedentary_length>40 hours.
+USHSlm %>% filter (sedentary_length>40)
+#inspect if any mistake in data processing
+USHSv2 %>% filter (fsd_id %in% c(899,1738)) %>% 
+  select(starts_with("k42"), starts_with("sit"), sedentary_length)
+#Not any mistake was found
+#remove them by replacing their sedentary_length to NA.
+USHSlm[c(899,1738), "sedentary_length"] <- NA
+```
+# 3. Modeling
+
+## 3.1 Predicting Mental Wellbeing
+
+### 3.1.1  explore potential numerical predictors for mental well-being
+
+```{r}
+USHSlm %>% 
+  select(-fsd_id, -height, -weight, 
+         -Social_wellbeing, -Social_engagement) %>% #These variables are removed since their variability  
+  select_if(is.numeric) %>%                    #can becaptured by other variables (e.g. height and 
+  pairs.panels()                               #weight by BMI)
+#Social might be a good predictor for mental wellbeing, followed by emotional well being
+```
+
+### 3.1.1 explore potential categorical predictors for mental wellbeing
+
+```{r}
+USHSlm %>% 
+  select(is.factor) %>% colnames()
+
+#gender
+p1 <- USHSlm %>%
+  ggplot(aes(x = Social, y = Mental_wellbeing, colour = gender)) +
+  geom_point() +
+  geom_smooth(method = "lm")+
+  theme(legend.position = "none")+
+  ggtitle("Lines are different gender")
+
+#BMI.factor
+p2 <- USHSlm %>%
+  ggplot(aes(x = Social, y = Mental_wellbeing, colour = BMI.factor)) +
+  geom_point() +
+  geom_smooth(method = "lm")+
+  theme(legend.position = "none")+
+  ggtitle("Lines are different BMII ranges")
+
+#light_exercise_minutes
+p3 <- USHSlm %>%
+  ggplot(aes(x = Social, y = Mental_wellbeing, colour = light_exercise_minutes)) +
+  geom_point() +
+  geom_smooth(method = "lm")+
+  theme(legend.position = "none")+
+  ggtitle("Lines are different exerciese amount")
+#emotionnal well-being
+#emotional well-being is continuous. 
+#It is dichotomized to observe potential interaction with Social.
+USHSlm <-  USHSlm %>% 
+  mutate(Emotional_wellbeing_dicho = Emotional_wellbeing %>% 
+                               cut(breaks = 2, 
+                               labels = c("low", "high")))
+
+p4 <- USHSlm %>%
+  ggplot(aes(x = Social, y = Mental_wellbeing, colour = Emotional_wellbeing_dicho)) +
+  geom_point(shape =1) +
+  geom_smooth(method = "lm")+
+  theme(legend.position = "none")+
+  ggtitle("Lines are different emotion wellbeing")
+
+p1/p2|p3/p4
+
+#Modest interaction between Social and Emotional wellbeing was observed
+```
+
+## 3.2 modeliing
+
+### 3.2.1 fitting three models
+
+```{r}
+# single predictor model
+fit_mental_single <- USHSlm %>% 
+  lm(Mental_wellbeing ~ Social, data = .)
+fit_mental_single %>% summary()
+#Social predictor was significant. About 55% variability of Mental well-being was 
+#explained by the model. 
+#However, the intercept was not significant.
+
+# double predictors model
+fit_mental_both <- USHSlm %>% 
+  lm(Mental_wellbeing ~ Social+Emotional_wellbeing_dicho, data = .)
+fit_mental_both %>% summary()
+#Both predictors were significant. About 58% variability of Mental well-being was
+#explained by the model. 
+#However, the intercept was still not significant.
+
+# double predictors with interaction model
+fit_mental_interaction <- USHSlm %>% 
+  lm(Mental_wellbeing ~ Social*Emotional_wellbeing_dicho, data = .) 
+fit_mental_interaction %>% summary()
+#Both predictors were significant. The intercept also turned significant. 
+#About 58% variability of Mental well-being is explained by the model. 
+```
+
+### 3.2.2 Inspect residual of each model
+
+```{r}
+
+#single predictor
+USHSlm %>% filter(!is.na(Mental_wellbeing)) %>% 
+  mutate(pred_mentalwb = predict(fit_mental_single)) %>% 
+  ggplot() + 
+  geom_point(aes(x = Social, 
+                 y = Mental_wellbeing, colour = Emotional_wellbeing_dicho), shape = 1) +
+  geom_line(aes(x = Social, 
+                y = pred_mentalwb, colour = Emotional_wellbeing_dicho))
+
+#double predictors
+USHSlm %>% filter(!is.na(Mental_wellbeing)) %>% 
+  mutate(pred_mentalwb = predict(fit_mental_both)) %>% 
+  ggplot() + 
+  geom_point(aes(x = Social, y = Mental_wellbeing, colour = Emotional_wellbeing_dicho), 
+             shape = 1) +
+  geom_line(aes(x = Social, y = pred_mentalwb, colour = Emotional_wellbeing_dicho))
+
+#double predictors with interaction
+USHSlm %>% filter(!is.na(Mental_wellbeing)) %>% 
+  mutate(pred_mentalwb = predict(fit_mental_interaction)) %>% 
+  ggplot() + 
+  geom_point(aes(x = Social, y = Mental_wellbeing, colour = Emotional_wellbeing_dicho), 
+             shape = 1) +
+  geom_line(aes(x = Social, y = pred_mentalwb, colour = Emotional_wellbeing_dicho))
+```
+
+### 3.2.3 Model diagnostic
+
+```{r}
+autoplot(fit_mental_interaction)
+
+# No trends of residual and standardized residuals were observed. 
+#No out-liers were exerting excessive leverage. 
+#However, the residual was moderately deviated from random distribution.
+```
+## 2.2 Predicting BMI
+
+I will skip displaying the part of variable selection
+
+### 2.2.1 Fitting models
+
+```{r}
+# single predictor model
+fit_BMI_single <- USHSlm %>% 
+  lm(BMI ~ sedentary_length, data = .)
+fit_BMI_single %>% summary()
+#Sedentary hours/week was a significant predictor for BMI. About 0.2% variability was 
+#explained by the model. 
+
+# double predictors model
+fit_BMI_both1 <- USHSlm %>% 
+  lm(BMI ~ sedentary_length + light_exercise_minutes, data = .)
+fit_BMI_both1 %>% summary()
+```
+
+&emsp;Sedentary hours/week and light exercise minutes were both significant predictors for BMI. About 0.6% variability was explained by the model. Note that in comparison to 0~15 minutes exercise, all other levels except for 15~30 minutes levels were significant. This was sensible since 15~30 minutes light workout might not be heavy enough for keeping fit. Base on this idea, I will re-define the levels and refit the model.
+
+
+```{r}
+#re-define the levels and refit the model.
+USHSlm <- USHSlm %>%
+  mutate(light_exercise_minutes_reduced = 
+           case_when(light_exercise_minutes == "<15min"~"<30min",
+                     light_exercise_minutes == "15-30min"~"<30min",
+                     light_exercise_minutes == "30-60min"~"30-60min",
+                     light_exercise_minutes == "Over 1h"~"Over 1h") %>% 
+           ff_label("Reduce <15 min and 15~30 min into one level"))
+
+# refit the double-predictor model
+fit_BMI_both2 <- USHSlm %>% 
+  lm(BMI ~ sedentary_length + light_exercise_minutes_reduced, data = .)
+fit_BMI_both2 %>% summary()
+#About 0.6% variability was explained by the model. Now all the levels significantly 
+#contributed to the model.
+
+# triple predictors model
+fit_BMI_triple <- USHSlm %>% 
+  lm(BMI ~ sedentary_length + light_exercise_minutes_reduced + gender, data = .)
+fit_BMI_triple %>% summary()
+```
+
+&emsp;All the predictors and intercept were significant, except for the over 1 hour level of light exercise, which made sense since workout longer than an hour might hit marginal effect in terms of keeping fit. However, the p= 0.05605, which was approaching the borderline of significance. Larger sample or re-sampling might make it significant. 
+
+&emsp;About 1.6% variability was explained, which is very small. BMI is a very complicate index carrying so much information. I did not expect to capture large complexity of it by such a simple model. It's already good to find three influencing factors.
+
+### 2.2.1 Model diagnostic
+
+```{r}
+autoplot(fit_BMI_triple)
+```
+
+&emsp;No trends of residual and standardized residuals were observed. One data point (standardized value ~1.0) was exerting excessive leverage, but it was not an out-lier. The residual was tremendously deviated from random distribution on larger residual& larger quantile side of the QQ plot, indicating some variability of the extreme large BMIs was poorly captured by the current model.
+
+*******************************************************
+
+**GOOOOOD JOB!!**
+
+Just knit this and SUBMIT the result (HTML) as your report of the **Assignment 3** in Moodle. 

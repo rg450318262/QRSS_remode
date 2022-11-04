@@ -1,0 +1,215 @@
+fsd_id,gender,BMI.factor,item,score
+27,Female,Normal weight,k23,NA
+36,Female,Normal weight,k24,NA
+37,Male,Normal weight,k26,NA
+47,Male,Overweight,k28,NA
+53,Female,Normal weight,k28,NA
+57,Male,Normal weight,k27,NA
+105,Female,Overweight,k25,NA
+107,Female,NA,k29,NA
+117,Male,Overweight,k30,NA
+170,Male,Normal weight,k27,NA
+184,Male,Normal weight,k28,NA
+265,Female,NA,k28,NA
+268,Female,Normal weight,k23,NA
+297,Female,Normal weight,k29,NA
+318,Female,Normal weight,k23,NA
+349,Female,Obese,k24,NA
+456,Female,Normal weight,k28,NA
+469,Female,Normal weight,k25,NA
+477,Female,Normal weight,k30,NA
+477,Female,Normal weight,k32,NA
+478,Female,Normal weight,k25,NA
+501,Female,Normal weight,k30,NA
+501,Female,Normal weight,k33,NA
+510,Male,Overweight,k26,NA
+513,Female,Normal weight,k23,NA
+516,Female,Normal weight,k30,NA
+527,Female,Normal weight,k24,NA
+572,Female,Normal weight,k32,NA
+585,Female,Overweight,k24,NA
+585,Female,Overweight,k27,NA
+585,Female,Overweight,k29,NA
+585,Female,Overweight,k31,NA
+585,Female,Overweight,k32,NA
+585,Female,Overweight,k33,NA
+585,Female,Overweight,k34,NA
+618,Female,Normal weight,k28,NA
+631,Female,Normal weight,k32,NA
+640,Female,NA,k23,NA
+640,Female,NA,k24,NA
+640,Female,NA,k25,NA
+640,Female,NA,k26,NA
+640,Female,NA,k27,NA
+640,Female,NA,k28,NA
+640,Female,NA,k29,NA
+640,Female,NA,k30,NA
+640,Female,NA,k31,NA
+640,Female,NA,k32,NA
+640,Female,NA,k33,NA
+640,Female,NA,k34,NA
+661,Female,Normal weight,k23,NA
+682,Female,Normal weight,k25,NA
+682,Female,Normal weight,k27,NA
+682,Female,Normal weight,k29,NA
+733,Female,Normal weight,k23,NA
+773,Male,Overweight,k34,NA
+819,Male,NA,k27,NA
+865,Female,Normal weight,k26,NA
+871,Female,Normal weight,k32,NA
+893,Female,Normal weight,k25,NA
+919,Male,Normal weight,k29,NA
+936,Female,Normal weight,k23,NA
+936,Female,Normal weight,k29,NA
+944,Female,Obese,k26,NA
+962,Female,Overweight,k29,NA
+962,Female,Overweight,k31,NA
+971,Female,Normal weight,k32,NA
+1005,Female,Overweight,k28,NA
+1038,Female,Overweight,k23,NA
+1038,Female,Overweight,k24,NA
+1038,Female,Overweight,k25,NA
+1038,Female,Overweight,k26,NA
+1038,Female,Overweight,k27,NA
+1038,Female,Overweight,k28,NA
+1038,Female,Overweight,k29,NA
+1038,Female,Overweight,k30,NA
+1038,Female,Overweight,k31,NA
+1038,Female,Overweight,k32,NA
+1038,Female,Overweight,k33,NA
+1038,Female,Overweight,k34,NA
+1050,Female,Normal weight,k26,NA
+1071,Female,Overweight,k24,NA
+1101,Male,Overweight,k27,NA
+1143,Male,Normal weight,k34,NA
+1176,Female,Normal weight,k31,NA
+1202,Female,Normal weight,k30,NA
+1202,Female,Normal weight,k33,NA
+1219,Female,Normal weight,k23,NA
+1219,Female,Normal weight,k24,NA
+1219,Female,Normal weight,k28,NA
+1219,Female,Normal weight,k33,NA
+1228,Female,Normal weight,k30,NA
+1239,Male,Overweight,k30,NA
+1270,Female,Normal weight,k24,NA
+1367,NA,NA,k26,NA
+1416,Female,Normal weight,k25,NA
+1456,Female,Overweight,k26,NA
+1467,Female,Obese,k30,NA
+1482,Female,Normal weight,k31,NA
+1497,Female,Normal weight,k28,NA
+1509,Male,Normal weight,k34,NA
+1529,Female,Normal weight,k30,NA
+1552,Male,Overweight,k31,NA
+1555,Female,Normal weight,k32,NA
+1589,Female,Normal weight,k32,NA
+1593,Male,Normal weight,k24,NA
+1600,Female,NA,k33,NA
+1610,Female,Normal weight,k26,NA
+1658,Female,Normal weight,k23,NA
+1659,Male,NA,k23,NA
+1659,Male,NA,k24,NA
+1659,Male,NA,k25,NA
+1659,Male,NA,k26,NA
+1659,Male,NA,k27,NA
+1659,Male,NA,k28,NA
+1659,Male,NA,k29,NA
+1659,Male,NA,k30,NA
+1659,Male,NA,k31,NA
+1659,Male,NA,k32,NA
+1659,Male,NA,k33,NA
+1659,Male,NA,k34,NA
+1663,Male,Normal weight,k31,NA
+1682,Female,Normal weight,k23,NA
+1682,Female,Normal weight,k24,NA
+1682,Female,Normal weight,k25,NA
+1682,Female,Normal weight,k26,NA
+1682,Female,Normal weight,k27,NA
+1682,Female,Normal weight,k28,NA
+1682,Female,Normal weight,k29,NA
+1682,Female,Normal weight,k30,NA
+1682,Female,Normal weight,k31,NA
+1682,Female,Normal weight,k32,NA
+1682,Female,Normal weight,k33,NA
+1682,Female,Normal weight,k34,NA
+1690,Male,Normal weight,k31,NA
+1692,Male,Normal weight,k28,NA
+1692,Male,Normal weight,k29,NA
+1725,Male,Normal weight,k31,NA
+1727,NA,NA,k25,NA
+1749,Female,Obese,k29,NA
+1793,Female,Normal weight,k30,NA
+1794,Female,Obese,k31,NA
+1820,Female,Normal weight,k33,NA
+1855,Male,Overweight,k28,NA
+1863,Female,Overweight,k31,NA
+1880,Female,Obese,k26,NA
+1910,Female,Overweight,k34,NA
+1919,Female,Obese,k30,NA
+1919,Female,Obese,k31,NA
+2001,Female,Normal weight,k25,NA
+2024,Male,Normal weight,k27,NA
+2108,Female,NA,k26,NA
+2167,Female,Normal weight,k25,NA
+2177,Male,Overweight,k29,NA
+2178,Male,Normal weight,k33,NA
+2204,Female,Normal weight,k31,NA
+2206,Female,Normal weight,k25,NA
+2206,Female,Normal weight,k29,NA
+2206,Female,Normal weight,k31,NA
+2228,Female,Obese,k30,NA
+2285,Female,Normal weight,k24,NA
+2285,Female,Normal weight,k27,NA
+2308,Female,Obese,k31,NA
+2341,Male,Obese,k27,NA
+2385,Female,Normal weight,k28,NA
+2446,Female,Normal weight,k23,NA
+2446,Female,Normal weight,k24,NA
+2446,Female,Normal weight,k25,NA
+2446,Female,Normal weight,k26,NA
+2446,Female,Normal weight,k27,NA
+2446,Female,Normal weight,k28,NA
+2446,Female,Normal weight,k29,NA
+2446,Female,Normal weight,k30,NA
+2446,Female,Normal weight,k31,NA
+2446,Female,Normal weight,k32,NA
+2446,Female,Normal weight,k33,NA
+2446,Female,Normal weight,k34,NA
+2486,Female,Normal weight,k32,NA
+2492,Male,Obese,k23,NA
+2492,Male,Obese,k24,NA
+2492,Male,Obese,k25,NA
+2492,Male,Obese,k26,NA
+2492,Male,Obese,k27,NA
+2492,Male,Obese,k28,NA
+2492,Male,Obese,k29,NA
+2492,Male,Obese,k30,NA
+2492,Male,Obese,k31,NA
+2492,Male,Obese,k32,NA
+2492,Male,Obese,k33,NA
+2492,Male,Obese,k34,NA
+2524,Female,Normal weight,k24,NA
+2529,Female,Overweight,k25,NA
+2572,Female,Normal weight,k24,NA
+2572,Female,Normal weight,k28,NA
+2587,Male,Normal weight,k29,NA
+2587,Male,Normal weight,k31,NA
+2598,Female,Normal weight,k31,NA
+2635,Female,Normal weight,k32,NA
+2635,Female,Normal weight,k33,NA
+2635,Female,Normal weight,k34,NA
+2652,Male,Normal weight,k24,NA
+2652,Male,Normal weight,k27,NA
+2699,Female,Normal weight,k25,NA
+2714,Female,Obese,k31,NA
+2812,Female,Obese,k23,NA
+2814,Female,Underweight,k26,NA
+2842,Female,Normal weight,k26,NA
+2875,Female,Normal weight,k26,NA
+2880,Female,Normal weight,k28,NA
+2888,Female,Normal weight,k23,NA
+2924,Female,Overweight,k30,NA
+2935,Female,Overweight,k25,NA
+3000,Male,Normal weight,k32,NA
+3014,Male,Normal weight,k28,NA
+3059,Male,Normal weight,k32,NA

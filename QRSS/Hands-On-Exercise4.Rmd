@@ -1,0 +1,628 @@
+---
+title: "Quantitative Research Skills 2022, Hands-On Exercise 4"
+subtitle: "Logistic Regression"
+
+author: "Write your name here"
+date: "Write the date here"
+
+output: 
+  html_document:
+    theme: flatly
+    highlight: haddock
+    toc: true
+    toc_depth: 2
+    number_section: false
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Hands-On Exercise 4: Logistic Regression
+
+The aim is to learn the basic skills related to the logistic regression. 
+
+Begin studying (a part of) the Chapter 9 of the RHDS book, and then apply those techniques with the USHS data. **Note:** many sections of the Chapter are skipped either partially or completely.
+
+Skim-reading the Chapters 5 and 6 of the MABS book (PDF in Moodle) might also support your learning.
+
+# RHDS Chapter 9: Logistic Regression
+
+Please begin 'active reading' from here:
+https://argoshare.is.ed.ac.uk/healthyr_book/chap09-h1.html
+
+## 9.1 Generalised linear modelling
+
+
+## 9.2 Binary logistic regression
+
+Read the section to get familiar with the basic idea and core concepts of the binary logistic regression:
+
+- *dependent/response/outcome* variable (y), always binary (dichotomous)
+- *explanatory variable/predictor* (x), continuous or categorical
+
+- univariable (simple) regression: only one x
+- multivariable (multiple) regression: more than one x (x1, x2, ...)
+
+
+### 9.2.1 The Question (1)
+
+Read through the rest of the section 9.2, following the continued (simulated) example related to coffee consumption, smoking etc. 
+
+Now, the outcome is a *cardiovascular event* over a 10-year period. That event includes the diagnosis of ischemic heart disease, a heart attack, or a stroke. The diagnosis of such event is a *binary condition*, it either happens or it does not. 
+
+### 9.2.2 Odds and probabilities
+
+### 9.2.3 Odds ratios
+
+### 9.2.4 Fitting a regression line
+
+### 9.2.5 The fitted line and the logistic regression equation
+
+### 9.2.6 Effect modification and confounding
+
+
+## 9.3 Data preparation and exploratory analysis
+
+https://argoshare.is.ed.ac.uk/healthyr_book/data-preparation-and-exploratory-analysis.html
+
+### 9.3.1 The Question (2)
+
+"Using logistic regression, we will investigate factors associated with death from malignant melanoma with particular interest in tumour ulceration." (So, quite medical type of example, but we will soon apply the similar models with our **USHS data**... patience, please!)
+
+### 9.3.2 Get the data
+
+Finally, some R code...
+
+```{r}
+melanoma <- boot::melanoma
+```
+
+### 9.3.3 Check the data
+
+```{r}
+library(tidyverse)
+library(finalfit)
+library("DT")
+melanoma %>% glimpse()
+melanoma
+melanoma %>% ff_glimpse() # no factors (yet) - see below!
+```
+
+### 9.3.4 Recode the data
+
+```{r}
+library(tidyverse)
+library(finalfit)
+melanoma <- melanoma %>% 
+  mutate(sex.factor = factor(sex) %>%          
+           fct_recode("Female" = "0",
+                      "Male"   = "1") %>% 
+           ff_label("Sex"),   
+         
+         ulcer.factor = factor(ulcer) %>% 
+           fct_recode("Present" = "1",
+                      "Absent"  = "0") %>% 
+           ff_label("Ulcerated tumour"),
+         
+         age  = ff_label(age,  "Age (years)"),
+         year = ff_label(year, "Year"),
+         
+         status.factor = factor(status) %>% 
+           fct_recode("Died melanoma"  = "1",
+                      "Alive" = "2",
+                      "Died - other" = "3") %>% 
+           fct_relevel("Alive") %>% 
+           ff_label("Status"),
+         
+         t_stage.factor = 
+           thickness %>% 
+           cut(breaks = c(0, 1.0, 2.0, 4.0, 
+                          max(thickness, na.rm=TRUE)),
+               include.lowest = TRUE)
+  )
+```
+
+"Check the cut() function has worked:"
+
+```{r}
+melanoma$t_stage.factor %>% levels()
+```
+
+"Recode for ease."
+
+```{r}
+melanoma <- melanoma %>% 
+  mutate(
+    t_stage.factor = 
+      fct_recode(t_stage.factor,
+                 "T1" = "[0,1]",
+                 "T2" = "(1,2]",
+                 "T3" = "(2,4]",
+                 "T4" = "(4,17.4]") %>% 
+      ff_label("T-stage")
+  )
+
+View(melanoma)
+
+```
+
+"We will now consider our outcome variable. With a binary outcome and health data, we often have to make a decision as to *when* to determine if that variable has occurred or not."
+
+(Kimmo's note: usually we don't have such challenge in questions of social science. **Just run these parts and proceed further, to plot the data, in subsection 9.3.5.**)
+
+```{r}
+library(ggplot2)
+melanoma %>% 
+  ggplot(aes(x = time/365)) + 
+  geom_histogram() + 
+  facet_grid(. ~ status.factor)
+```
+
+(continued, see above...)
+
+```{r}
+# 5-year mortality
+melanoma <- melanoma %>% 
+  mutate(
+    mort_5yr = 
+      if_else((time/365) < 5 & 
+                (status == 1), 
+              "Yes",          # then
+              "No") %>%       # else
+      fct_relevel("No") %>% 
+      ff_label("5-year survival")
+  )
+```
+
+### 9.3.5 Plot the data
+
+"We are interested in the association between tumour ulceration and outcome."
+
+(Kimmo: So, the response will now be the binary variable `mort_5yr` (with values Yes or No).)
+
+```{r}
+p1 <- melanoma %>% 
+  ggplot(aes(x = ulcer.factor, fill = mort_5yr)) + 
+  geom_bar() + 
+  theme(legend.position = "none")
+
+p2 <- melanoma %>% 
+  ggplot(aes(x = ulcer.factor, fill = mort_5yr)) + 
+  geom_bar(position = "fill") + 
+  ylab("proportion")
+
+library(patchwork)
+p1 + p2
+```
+
+### 9.3.6 Tabulate data
+
+Kimmo: the following is a brief look at the possible explanatory variables (predictors) and *how they are related to each other*; that's why the `ulcer.factor` is now called 'dependent' here:
+
+```{r}
+library(finalfit)
+dependent <- "ulcer.factor"
+explanatory <- c("age", "sex.factor", "year", "t_stage.factor")
+melanoma %>% 
+  summary_factorlist(dependent, explanatory, p = TRUE,
+                     add_dependent_label = TRUE) %>% DT::datatable()
+###question to ask
+melanoma %>% finalfit(dependent, explanatory, p = TRUE,
+                     add_dependent_label = TRUE) %>% DT::datatable()
+
+```
+
+```{r}
+fit0 <- glm(ulcer.factor ~ age+sex.factor+year+t_stage.factor, data = melanoma, family = binomial) 
+summary(fit0)
+```
+
+(We will skip the section 9.4 - but of course you may study it, too!)
+
+
+## 9.5 Fitting logistic regression models in base R
+
+https://argoshare.is.ed.ac.uk/healthyr_book/fitting-logistic-regression-models-in-base-r.html
+
+"The glm() stands for generalised linear model and is the standard base R approach to logistic regression." ... "Let’s start with a simple univariable model using the classical R approach."
+
+Kimmo: So, we start with a simple model, where mort_5yr is the response, and ulcer.factor is the only predictor:
+
+```{r}
+fit1 <- glm(mort_5yr ~ ulcer.factor, data = melanoma, family = binomial) 
+summary(fit1)
+getOption("na.action")
+```
+
+
+
+"This is the standard R output which you should become familiar with. It is included in the previous figures. The estimates of the coefficients (slopes) in this output are on the log-odds scale and always will be."
+
+(Kimmo: "log-odds scale" is also called "logit scale", see e.g. MABS, Chapter 5.)
+
+"The coefficients and their 95% confidence intervals can be extracted and exponentiated like this."
+
+```{r}
+coef(fit1) %>% exp()
+```
+
+```{r}
+confint(fit1) %>% exp()
+```
+
+```{r}
+library(broom) # install.packages("broom")
+fit1 %>% 
+  tidy(conf.int = TRUE, exp = TRUE)
+```
+
+"We can see from these results that there is a strong association between tumour ulceration and 5-year mortality (OR 6.68, 95%CI 3.18, 15.18)."
+
+Kimmo: we will now jump to section 9.7 to learn how to build the logistic regression models more easily using the finalfit package (made by the authors of the RHDS book).
+
+
+## 9.7 Fitting logistic regression models with finalfit
+
+"Our preference in model fitting is now to use our own finalfit package. It gets us to our results quicker and more easily,..."
+
+Kimmo: this finalfit approach could have been used also with the Linear Regression, but I decided to skip it, as the amount of material was already quite large. Besides, I think that maybe the finalfit approach is more useful with the Logistic Regression, as it gives the ORs (Odds Ratios) and their confidence intervals in a very straight-forward way, as we will soon see.
+
+So, this is the finalfit approach for the same model that we tried with the glm() function above:
+
+```{r}
+library(finalfit)
+dependent <- "mort_5yr"
+explanatory <- "ulcer.factor"
+melanoma %>% 
+  finalfit(dependent, explanatory) %>% DT::datatable() # Kimmo: removed 'metrics' for simplicity, cf. book
+?finalfit
+```
+
+(Subsection 9.7.1 is skipped.)
+
+Kimmo: As an example of a multiple (multivariable) model, we will try one more, from the next section:
+
+## 9.8 Model fitting
+
+Kimmo: So, now we add those predictors we thought to be important: (and that we investigated above, without the mort_5yr outcome variable):
+
+```{r}
+library(finalfit)
+dependent <- "mort_5yr"
+explanatory <- c("ulcer.factor", "age", "sex.factor", "t_stage.factor")
+melanoma %>% 
+  finalfit(dependent, explanatory) %>% DT::datatable() # Kimmo: removed 'metrics' for simplicity, cf. book
+```
+
+Kimmo: we will skip a few stages of the modelling process in the book, and jump to the end of the subsection, where an interaction model is tested.
+
+Before that, we will need the age converted to a factor:
+
+```{r}
+melanoma <- melanoma %>% 
+  mutate(
+    age.factor = cut(age,
+                     breaks = c(0, 25, 50, 75, 100)) %>% 
+      ff_label("Age (years)"))
+```
+
+"As a final we can check for a first-order interaction between ulceration and T-stage. Just to remind us what this means, a significant interaction would mean the effect of, say, ulceration on 5-year mortality would differ by T-stage. For instance, perhaps the presence of ulceration confers a much greater risk of death in advanced deep tumours compared with earlier superficial tumours."
+
+```{r}
+library(finalfit)
+dependent <- "mort_5yr"
+explanatory <- c("ulcer.factor", "t_stage.factor")
+explanatory_multi <- c("ulcer.factor*t_stage.factor")
+melanoma %>% 
+  finalfit(dependent, explanatory, explanatory_multi, p = T) %>% DT::datatable()# Kimmo: removed 'keep_models', cf. book
+melanoma %>% 
+```
+
+```{r}
+#Added
+fit_interaction <- glm(mort_5yr ~ ulcer.factor + t_stage.factor + ulcer.factor * t_stage.factor, data = melanoma, family = binomial)
+fit_interaction %>% 
+  tidy(conf.int = T, exp = T) 
+```
+
+Kimmo: As there were no significant interactions, and age & sex were non-significant in multivariable models, the final model is (using the age as a factor):
+
+```{r}
+library(finalfit)
+dependent <- "mort_5yr"
+explanatory <- c("ulcer.factor", "age.factor", 
+                "sex.factor", "t_stage.factor")
+explanatory_multi <- c("ulcer.factor", "t_stage.factor")
+melanoma %>% 
+  finalfit(dependent, explanatory, explanatory_multi) # Kimmo: removed 'metrics' for simplicity, cf. book
+```
+
+(Kimmo: as you can see, the age is still non-significant, but it may often be good the leave in the model to display its effect.)
+
+Kimmo: Just one more thing here, that we (you!) may perhaps apply also with the USHS data:
+
+### 9.8.1 Odds ratio plot
+
+```{r}
+dependent <- "mort_5yr"
+explanatory_multi <- c("ulcer.factor", "t_stage.factor")
+melanoma %>% 
+  or_plot(dependent, explanatory_multi,
+          breaks = c(0.5, 1, 2, 5, 10, 25),
+          table_text_size = 3.5,
+          title_text_size = 16)
+```
+
+"We can conclude that there is evidence of an association between tumour ulceration and 5-year survival which is independent of the tumour depth as captured by T-stage."
+
+
+*Nice work again!!* (We skip the rest of the Chapter 9.)
+
+
+*********************************************************************
+
+
+**The NEXT CHALLENGE is to investigate the USHS data with Logistic Regression.**
+
+You can choose the variables freely. However, remember that in Logistic Regression, the dependent/response/outcome variable must be *binary*. (That is the greatest difference to the Linear Regression.)
+
+Recall the list of the old and new factors that I created for you (and you perhaps continued) last week. You may now try some of those as a possible response variable of the model. (I copy those codes below, as I found also one minor typo there.)
+
+Then, you may try the *factor score variables* (or the means you created earlier) as possible *explanatory variables*, i.e. predictors (one at a time, of course).
+
+*Again begin from a simple model: one response and one predictor.* Then add another predictor, and perhaps a third one (or you may try a model with an interaction).
+
+The second predictor could be a categorical variable (change it to a factor first, with appropriate levels; e.g. the gender or age are OK, but you may also check the list of other possible categorical variables of the USHS data).
+
+
+
+**SOME EXAMPLES:**
+
+
+```{r}
+library(tidyverse)
+# NOTE! Use your own data where you have saved the new factor scores etc.! The below factors are examples that you may copy for your use, but you may also create some new factors similarly, possibly with different levels.
+USHSv2 <- read_csv("daF3224e.csv")
+USHSv2
+# once again, re-create the gender and age variables as factors:
+USHSv2 <- USHSv2 %>%
+  mutate(gender = k2 %>% factor() %>% 
+           fct_recode("Male" = "1", "Female" = "2"),
+         
+         age = k1 %>% factor() %>% 
+           fct_recode("19-21" = "1", "22-24" = "2", "25-27" = "3", 
+                      "28-30" = "4", "31-33" = "5", "33+" = "6")
+         )
+
+# Similarly, here are some new factors that you could maybe use, too :
+USHSv2 <- USHSv2 %>%
+  mutate(eduinst = bv6 %>% factor() %>% 
+           fct_recode("Polytechnic" = "0", "University" = "1"),
+        
+         learndisab = k7 %>% factor() %>%
+           fct_recode("No" = "1", "Yes" = "2"),
+        
+         headache = k9_1 %>% factor() %>%
+           fct_recode("Not at all" = "1", "Occassionally" = "2",
+                      "Once a week" = "3", "Daily/almost daily" = "4"),
+         
+# (you could choose other symptoms similarly)
+# also, you could try classifying them only in binary categories:
+
+         teethproblem = k9_21 %>% factor() %>%
+           fct_recode("No" = "1", "Yes" = "2", "Yes" = "3", "Yes" = "4"),
+
+# in the next one, I have (as an example) combined 1&2 and 4&5:
+
+         weightthink = k13 %>% factor() %>%
+           fct_recode("Underweight" = "1", "Underweight" = "2",
+                      "Just right" = "3", "Overweight" = "4", "Overweight" = "5"),
+
+# again, some examples, now from k39 variables:
+         help_time = k39_1 %>% factor() %>%
+           fct_recode("No" = "0", "Yes" = "1"),
+         help_stress = k39_2 %>% factor() %>%
+           fct_recode("No" = "0", "Yes" = "1"),
+         help_studyprbl = k39_3 %>% factor() %>%
+           fct_recode("No" = "0", "Yes" = "1"),
+         help_studyskills = k39_4 %>% factor() %>%
+           fct_recode("No" = "0", "Yes" = "1"),
+         help_socialrels = k39_5 %>% factor() %>%
+           fct_recode("No" = "0", "Yes" = "1"),
+         help_selfesteem = k39_6 %>% factor() %>% # there was a typo in the name...
+           fct_recode("No" = "0", "Yes" = "1"),
+# etc.
+# then, some different examples:
+
+         exercise_minutes = k40 %>% factor() %>%
+           fct_recode("<15min" = "0", "15-30min" = "1",
+                      "30-60min" = "2", "Over 1h" = "3"),
+
+         sweaty_exercise = k41 %>% factor() %>%
+           fct_recode("Not at all/seldom" = "0", "1-3 times/month" = "1",
+                      "Once/week" = "2", "2-3 times/week" = "3",
+                      "4-6 times/week" = "4", "Daily" = "5"),
+
+         buy_healthy_food = k44 %>% factor() %>%
+           fct_recode("Never/very seldom" = "0", "Occassionally" = "1", "Often" = "2"),
+
+         eat_lunch_restaurant = k45 %>% factor() %>%
+           fct_recode("On five days" = "1", "On 3-4 days" = "2",
+                      "On 1-2 days" = "3", "Less frequently" = "4"),
+
+         teeth_brush  = k56 %>% factor() %>%
+           fct_recode("Less often than once a day" = "1", "Once/day" = "2",
+                      "More often than once a day" = "3"),
+
+         teeth_floss = k58 %>% factor() %>%
+           fct_recode("Not at all" = "0", "Occassionally" = "1",
+                      "2-3 times a week" = "2", "Daily" = "3"),
+
+         dental_scary = k66 %>% factor() %>%
+           fct_recode("Not at all" = "0", "Somewhat" = "1", "Very much" = "2"),
+
+         tobacco_use = k67_1 %>% factor() %>%
+           fct_recode("Not at all" = "0", "Moderately" = "1", 
+                      "A bit too much" = "2", "Way too much" = "3",
+                      "Can't say" = "4"),
+         
+         beer_wine_etc = k74 %>% factor() %>%
+           fct_recode("Never" = "0", "Once a month" = "1", 
+                      "2-4 times a month" = "2", "2-3 times a week" = "3",
+                      "4 or more times a week" = "4"),
+         
+         study_years = k89_1 %>% factor() %>%
+           fct_recode("Under 3 years" = "1", "3-6 years" = "1", 
+                      "Over 6 years" = "2"),
+
+         success = k91 %>% factor() %>%
+           fct_recode("More successful than expected" = "1",
+                      "As successful as expected" = "2",
+                      "Less successful than expected" = "3"),
+
+         right_field = k92 %>% factor() %>%
+           fct_recode("No" = "0", "Yes" = "1", "Can't say" = "2"),
+
+         household = k106 %>% factor() %>%
+           fct_recode("Alone" = "1",
+                      "Shared accommodation" = "2",
+                      "With partner" = "3",
+                      "With partner and children" = "4",
+                      "Alone with children" = "5",
+                      "With my parents" = "6",
+                      "Other" = "7"),
+
+# I'm sure you can create more similarly! :)
+
+        )
+
+```
+
+**A short example of Logistic Regression with the USHS data:**
+
+First, I create a mean-variable of a general well-being, using these four variables (all measured from 1: Very poor to 5: Very good):
+
+    k8_1:k8_4, # current well-being
+
+```{r}
+library(tidyverse)
+USHSv2 <- USHSv2 %>% 
+  mutate(wellbeing = rowMeans(across(c(k8_1:k8_4)), na.rm = TRUE))
+
+USHSv2 %>% 
+  ggplot(aes(x = wellbeing)) +
+  geom_histogram(bins = 10)
+```
+
+First try with the glm(), before using the finalfit approach.
+
+In my model, the response variable is the binary variable: "Have you been diagnosed with a learning disability?"
+
+The first explanatory variable to be tested is the wellbeing (the mean just created above):
+
+```{r}
+fit1 <- glm(learndisab ~ wellbeing, data = USHSv2, family = binomial)
+summary(fit1) 
+fit1 %>% tidy(conf.int = T, exp = T)
+```
+
+The coefficient estimate (-0.283) is highly significant, with an Odds Ratio of `r exp(-0.283)`, which means that lower wellbeing seems to predict learning disabilities quite well. Let us add headache (during the last month) as another predictor:
+
+```{r}
+fit2 <- glm(learndisab ~ wellbeing + headache, data = USHSv2, family = binomial)
+summary(fit2)
+```
+
+Two of its levels are significant, too, and the coefficients of its levels are in increasing order (i.e., more often headache, more often learning disabilities).
+
+**NOTE:** Always with categorical predictors (also in the Linear Regression) one of the levels is chosen as the *reference group* (here: "headacheNot at all"), and the other groups are compared to that.
+
+**A tiny addition in my example:** 
+
+In case of categorical variables (both outcome and predictor), it may be useful to draw a bar plot, like in the RHDS, section 9.3.5. Here is one with the USHS, using the variables learndisab and headache:
+
+```{r}
+
+p1 <- USHSv2 %>% 
+  filter(!is.na(learndisab) & !is.na(headache)) %>%
+  ggplot(aes(x = headache, fill = learndisab)) + 
+  geom_bar() + coord_flip() +
+  theme(legend.position = "none")
+
+p2 <- USHSv2 %>% 
+  filter(!is.na(learndisab) & !is.na(headache)) %>%
+  ggplot(aes(x = headache, fill = learndisab)) + 
+  geom_bar(position = "fill") + coord_flip() +
+  ylab("proportion")
+
+library(patchwork)
+p1 + p2
+```
+
+
+
+
+*Similarly with the finalfit:*
+
+```{r}
+library(finalfit)
+dependent <- "learndisab"
+explanatory <- c("wellbeing")
+USHSv2 %>% 
+  finalfit(dependent, explanatory)
+```
+
+```{r}
+library(finalfit)
+dependent <- "learndisab"
+explanatory <- c("wellbeing","headache")
+USHSv2 %>% 
+  finalfit(dependent, explanatory)
+```
+
+Let us also add the institution ("Polytechnic" = "0", "University" = "1"):
+
+```{r}
+library(finalfit)
+dependent <- "learndisab"
+explanatory <- c("wellbeing", "headache", "eduinst")
+USHSv2 %>% 
+  finalfit(dependent, explanatory)
+```
+
+Note that the Odds Ratio (OR) for the eduinst is less than 1 (similarly than with wellbeing). How would you interpret that?
+
+Finally, we can visualize the OR's using finalfit:
+
+```{r}
+library(finalfit)
+dependent <- "learndisab"
+explanatory <- c("wellbeing", "headache", "eduinst")
+USHSv2 %>% 
+  or_plot(dependent, explanatory,
+          breaks = c(0.5, 1, 2, 5),
+          table_text_size = 3.5,
+          title_text_size = 16)
+```
+
+
+**OK, now it is your turn to continue analysing the USHS data!**
+
+
+**Pick different variables and study a few more Logistic Regression models.**
+
+
+**Good luck!**
+
+Create your models here, and then gather them (or at least the best ones) to the **Assignment 4**.
+
+You may also save this Rmd with a different name for each model, if you want: Hands-On-Exercise4a, b, c... or some other naming convention of your choice.
+
+In any case, *save the R codes and your comments of your modelling experiments*, so that you can copy the selected codes and comments to the **Assignment 4**.
+
+
+*********************
+
+Again, as soon as you have completed the **Hands-On Exercise 4**, you are ready to go for **Assignment 4**.
+
+*One more time: GOOD JOB!!*

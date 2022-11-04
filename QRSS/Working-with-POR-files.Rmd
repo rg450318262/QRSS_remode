@@ -1,0 +1,222 @@
+# Instructions for working with POR (SPSS Portable) files / KV 16 Oct 2022
+#
+# During the course, we have followed the RHDS book in working with
+# *factors*, i.e., categorical variables that have two or more *levels*,
+# for example 'gender' with the levels 1 = 'Male' and 2 = 'Female'.
+#
+# In addition, I have given examples of converting numeric variables
+# of the USHS data to factors. The USHS data was originally given in the
+# CSV (comma-separated values) form, which is a universal form, but it
+# cannot handle the factors very well, at least if the variables are
+# saved in the numeric form (as was the case with the USHS data).
+#
+# Now, I decided to use another way of reading data in R. FSD distributes
+# their data sets also in the POR (SPSS Portable) form that preserves
+# the textual information of the variables (in SPSS vocabulary: "variable
+# labels" and "value labels").
+#
+# To work with the POR files, we will use the 'haven' package, that is also 
+# part of tidyverse. You can download from Moodle one of the POR files (just
+# click its name) or all of them (click "Download folder" and unzip to your
+# working directory). Then you can start working in your R Markdown sheet
+# as follows:
+```{r}
+library(tidyverse)
+library(tidyr)
+library(gapminder) # dataset
+library(finalfit)
+library(broom)
+library(gtsummary)#install.packages("gtsummary")
+library(sjlabelled)#install.packages("sjlabelled")
+library(lubridate)#install.packages("lubridate")
+library(sjlabelled)
+library(psych)
+library(Hmisc)
+library(expss)#install.packages("expss")
+library(patchwork)
+library(ggfortify)
+library(DT)
+library(modelsummary)#install.packages("modelsummary")
+```
+
+```{r}
+por1 <- "daF3077e.por"
+por2 <- "daF3153e.por"
+por3 <- "daF3172e.por"
+por4 <- "daF3316e.por"
+por5 <- "daF3345e.por"
+por6 <- "daF3448e.por"
+por7 <- "daF3494e.por"
+por8 <- "daF3510.por"
+```
+
+por1 <- "daF3077e.por"
+por2 <- "daF3153e.por"
+por3 <- "daF3172e.por"
+por4 <- "daF3316e.por"
+por5 <- "daF3345e.por"
+por6 <- "daF3448e.por"
+por7 <- "daF3494e.por"
+por8 <- "daF3510.por"
+```{r}
+library(haven) # part of tidyverse
+library(dplyr) # part of tidyverse
+```
+
+
+# As an example, I will use the first data set from the above list:
+
+# read the data in R:
+```{r}
+data1 <- read_por(por1)
+```
+
+
+# browse the data and check its structure:
+
+```{r}
+View(data1)
+glimpse(data1) # note the "<dbl+lbl>": double & label! (haven speciality)
+
+data1 %>% DT::datatable()
+```
+
+
+
+# summary of V5_3 (as a continuous variable - ERRONEOUS because of '9's!)
+# remember to change '9's to NA's (as we did with the USHS data) if you
+# use this variable in numeric form (in Factor Analysis, for example)!
+
+```{r}
+data1 %>%
+  select(V5_3) %>%
+  summary
+
+data1 %>% ggplot(aes(x = V5_3)) +
+  geom_boxplot()
+
+data1 %>% select(V5_1:V5_4) %>% 
+  pivot_longer(everything(), names_to = "items", values_to = "score") %>% 
+  ggplot(aes(x = score)) +
+  geom_boxplot() +
+  facet_wrap(~items)
+```
+
+
+# summary of V5_3 as a factor:
+# OBS: "as_factor" (from haven), NOT "as.factor" (from base R)!
+data1 %>%
+  select(V5_3) %>%
+  as_factor() %>%
+  summary
+
+# ---------------------------------------------------
+# NOTE!!
+# it may be a good strategy to have TWO VERSIONS of the data:
+#
+#   1) numeric (see above) and 2) labelled (see below)!
+#
+# (with the latter one, it will be easier to understand the contents
+# of the variables, while the numeric data is needed in Factor Analysis,
+# for example)
+#
+# ---------------------------------------------------
+
+# convert ALL the lbl's of the data to factors (dbl's will remain as dbl's):
+# OBS: create a NEW DATA here with a new name (data1F)
+```{r}
+data1F <- as_factor(data1) # very powerful operation!
+data1F
+```
+
+
+# that can be done only to a data set with "<dbl+lbl>" types! (haven speciality)
+
+# browse the data in labelled form:
+```{r}
+View(data1F)
+glimpse(data1F) # now each variable is either <fct> or <dbl> (usual R style)
+```
+
+
+
+# summary of V5_3 (now fixed as a factor):
+```{r}
+data1F %>%
+  select(V5_3) %>%
+  # as_factor() %>% # not needed anymore
+  summary() # displays the 5 factor levels (labels) and their frequencies
+
+```
+
+
+# OBS: the levels do NOT have the numeric values anymore, ONLY the labels!
+
+# so, if you need to recode the labels, you must do it following this:
+# (you must use both the new and old labels, as there are no numbers)
+```{r}
+library(forcats)
+data1F <- data1F %>% # save the changes back in the same data
+  mutate(V5_3_reduced = V5_3 %>% # change the labels of the factor variable
+    fct_recode("Agree" = "Strongly agree",
+               "Agree" = "Somewhat agree", 
+               "Disagree" = "Somewhat disagree", 
+               "Disagree" = "Strongly disagree") %>%
+    fct_rev() # this will also reverse the levels (sometimes handy!)
+  ) # end of mutate
+```
+
+
+# the "Don't know, no answer" level was not changed, it is still there:
+
+```{r}
+data1F %>%
+  select(V5_3, V5_3_reduced) %>%
+  summary() # displays the 3 factor levels (labels) and their frequencies
+```
+
+
+
+# this is how you can access the variable label: (inherited via haven)
+```{r}
+attributes(data1F$V5_3)$label
+var_lab(data1F$V5_3)
+lapply(data1F, function(x)var_lab(x))
+lapply(data1F, function(x)val_lab(x))
+sapply(data1F[,-c(1:4)], function(x)table(x))
+?pull
+```
+
+
+# The label is still quite long, so you may just copy+paste and shorten it,
+# in case you need it in some plot titles etc. - for example (I just add a
+# line break '\n' to have it on two lines in the plot, without shortening):]
+```{r}
+label_V5_3 <- "The EU shall enable and support more mobility of students \n and workers between the member states than existing today"
+```
+
+
+# let us create a bar plot of the factor variable V5_3:
+
+```{r}
+library(ggplot2)
+p1 <- data1F %>%
+  ggplot(aes(x = V5_3_reduced)) + 
+    geom_bar(color = "blue", fill = "red") + 
+    coord_flip() + 
+    labs(title = label_V5_3)
+p1
+```
+
+
+
+
+p1 # look at the plot
+
+# Just for fun, let us save the plot in a PNG graphics file, with some options:
+```{r}
+
+ggsave("plot.png", plot = p1, units = "cm", width = 25, height = 15, dpi = 300)
+```
+
+# look at the Files pane of RStudio and click on the plot.png file to see it!

@@ -1,0 +1,165 @@
+---
+title: "Quantitative Research Skills 2022, Assignment 4"
+subtitle: "Logistic Regression"
+
+author: "Write your name here"
+date: "Write the date here"
+
+output: 
+  html_document:
+    theme: flatly
+    highlight: haddock
+    toc: true
+    toc_depth: 2
+    number_section: false
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Assignment 4: Logistic Regression
+
+Begin working with this when you have completed the **Hands-On Exercise 4**.
+
+*********************************************
+
+Show and report (step by step) the **Logistic Regression models** you created with the **USHS data**. What kind of conclusions do you make in each of the models? How about the odds-ratios of the explanatory variables?
+
+
+
+# 1. Preparing 
+
+## 1.1 Packages loading
+
+```{r}
+library(tidyverse)
+library(tidyr)
+library(gapminder) # dataset
+library(finalfit)
+library(broom)
+library(gtsummary)#install.packages("gtsummary")
+library(sjlabelled)#install.packages("sjlabelled")
+library(lubridate)#install.packages("lubridate")
+library(sjlabelled)
+library(psych)
+library(Hmisc)
+library(expss)#install.packages("expss")
+library(patchwork)
+library(ggfortify)
+library(DT)
+```
+
+
+## 1.2 Data loading
+```{r}
+USHSv3 <- read_csv("USHSv3")
+USHSv3 %>% select (545:569) %>% DT::datatable()
+```
+## 1.3 Generating new variables
+
+### 1.3.1 Generating variable about 1-year medical help seeking practice
+```{r, eval = F}
+
+# questions under k37 collected information about whether and how much medical
+#help seeking behaviors (MHSB) the respondents had for the past one year for 
+#varioustype of medical providers. Here I simplified them into whether they  
+#have MHSB for any type of service. 
+#select columns k37s
+
+col_k37s <- USHSv3  %>% select (fsd_id, starts_with("k37"))
+ 
+#How many types of medical provider he/she saw 1~5 times last year.
+
+col_k37s$med_seek_face_few <- rowSums(col_k37s[-1] == 1, na.rm = T)
+col_k37s <- col_k37s %>% mutate(med_seek_face_few = med_seek_face_few %>% ff_label("medical visits a few times"))
+
+#How many types of medical provider he/she saw >5 times last year.
+#a new variable
+col_k37s$med_seek_face_many <- rowSums(col_k37s[-1] == 2, na.rm = T)
+col_k37s <- col_k37s %>% mutate(med_seek_face_many = med_seek_face_many %>% ff_label("medical visits many times"))
+
+get_labels(col_k37s)
+```
+
+
+
+```{r}
+col_k37s <- col_k37s  %>% 
+  rowwise() %>% 
+  mutate(med_seek_face_few =sum(
+    across (starts_with("k37")&contains("_2_")) == 1, na.rm = T)%>%
+      ff_label("medical visits a few times"))
+
+#How many types of medical provider he/she saw >5 times last year.
+#a new variable
+col_k37s <- col_k37s  %>% 
+  rowwise() %>% 
+  mutate(med_seek_face_many =sum(
+    across (starts_with("k37")&contains("_2_")) == 2, na.rm = T) %>%
+      ff_label("medical visits many times"))
+
+#How many types of medical service he/she saw via phone last year.
+#a new variable
+col_k37s <- col_k37s  %>% 
+  rowwise() %>% 
+  mutate(med_seek_phone =sum(
+    across (starts_with("k37")&contains("_3_")) == 3, na.rm = T))%>% 
+  apply_labels(., med_seek_phone = "Medical phone call")
+
+#How many types of medical service he/she saw via internet last year.
+#a new variable
+col_k37s <- col_k37s  %>% 
+  rowwise() %>% 
+  mutate(med_seek_online =sum(
+    across (starts_with("k37")&contains("_4_")) == 4, na.rm = T))%>% 
+    ungroup() %>% 
+  apply_labels(., med_seek_online = "Medical help seeking on-line")
+
+
+#If he/she sought any medical help during last year (yes/no)
+#This is a combination of the four new variables above, if any of them has
+#a value of 1, this new variable also gets a value of 1, or else it gets 0.
+
+col_k37s <- col_k37s  %>% 
+  mutate(med_seek_any = case_when(if_any(starts_with("med_seek"), ~.x != 0)~ "Yes",
+                                  if_all(starts_with("med_seek"), ~.x == 0)~ "No") %>% 
+           factor() %>% 
+           ff_label("any medical help seeking during last year"))
+
+          
+#           sum(across (starts_with("med_seek")), na.rm = T)) %>% 
+#  mutate(med_seek_any = if_else(med_seek_any == 0, 0, 1)) %>% 
+#  ungroup()
+#col_k37s %>% select(med_seek_any)  
+#col_k37s <- col_k37s  %>% 
+#  mutate(med_seek_any = med_seek_any %>%
+#           factor() %>% 
+#           fct_recode("Yes" = "1", "No" = "0") %>% 
+#           ff_label("any medical help seeking during last year"))
+
+USHSv2_col_k37s <- left_join(USHSv2, col_k37s)
+USHSv2_col_k37s %>% select(starts_with("med_seek"))
+write_csv(USHSv2_col_k37s, "USHSv2_col_k37s")
+
+USHSv2_col_k37s %>% select(med_seek_face_many)
+col_k37s %>% select(starts_with("med_seek")) 
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+*******************************************************
+
+**GOOOOOD JOB!!**
+
+Just knit this and SUBMIT the result (HTML) as your report of the **Assignment 4** in Moodle. 

@@ -1,0 +1,846 @@
+---
+title: "Quantitative Research Skills 2022, Assignment 2"
+subtitle: "Factor Analysis"
+
+author: "Rong Guang"
+date: "Sep 27 2022"
+
+output: 
+  html_document:
+    theme: journal
+    highlight: haddock
+    toc: true
+    toc_depth: 2
+    number_section: false
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+# Assignment 2: Factor Analysis
+
+Begin working with this when you have completed the **Hands-On Exercise 2**.
+
+*******************************************************************************
+
+**Your task:**
+
+Practice with 2-3 sets of variables (one at a time) in the USHS data, trying different number of factors (2-3), comparing orthogonal and oblique rotations, and hence going through ALL the phases required to do FA (as instructed and shown in the **Hands-On-Exercise 2**).
+
+It should be possible to analyse these particular sets of variables in the USHS data with FA:
+(Some of them might be easier to interpret than others).
+
+    k21_1:k21_9, # various things in life (obs: originally wrong scale! "3" -> NA!), 9 variables
+    k22_1:k22_10, # how often (felt various things), 10 variables
+    k23:k34, # General Health Questionnaire (1-4), 12 variables
+    k46_1:k46_11, # on how many days/week eat various food/(11)skip lunch (0,...,7=every day), 11 variables
+    k95_1:k95_18, # feelings of studies (1:disagree,6:agree), 18 variables
+    
+**OBS:** If you use the k21* variables, remember to wrangle them first ("3" - NA!) See Hands-On-Exercise 1b!
+
+**Note:** With FA, the variables can have different directions (like the items 2 & 3 in k22*), even different scales. 
+
+*PERHAPS you could also try to combine variables across different measures: some items of k21 together with some items from k95, for instance!* (I have not tried to analyse that kind of combinations, but it should be perfectly possible, at least if the items would be somehow substantially related to each other. TRY IT!!)
+
+What is also required in this **Assignment 2**, is your **interpretations** (you don't have to be a substance expert, I just encourage you to practice, as those phenomena should be easy enough to understand without a special expertise). Interpreting your analyses is very important, and this course is a safe place to practice that part, too.
+
+**So TRY to interpret the factors you find and give them describing NAMES.**
+
+Finally, show that you can work with the new **factor score variables** in the original data: visualise those scores with histograms, box plots, scatter plots, using also some other variables of the USHS. You will find a lot of good R code for producing such visualisations in the earlier exercises.
+
+
+*******************************************************************************
+
+# Analysing the USHS data with Factor Analysis (step by step)
+
+Use as many R code chunks and text areas as you need - it's now all up to you!
+
+*Please choose only your BEST FACTOR ANALYSIS and show it here step by step!*
+
+Start by reading in the data and converting the factors (gender and age), just like in the exercise.
+
+## Enviroment and data preparation
+
+**1. Package loading**
+
+```{r}
+library (tidyverse)#a combination of useful packages
+library(dplyr) # data wrangling 
+library(psych) # describing data
+library(patchwork) # picture layout
+library(finalfit) # descriptive and inferential statistics well-tabulated
+library(naniar)#install.packages("naniar")#Visualizing missing data
+library(broom)#tidy tables
+library(ggplot2)
+library(tidyr)
+library(GPArotation)
+```
+
+**2. Data wrangling <br />**
+
+**2.1 Load USHS data**
+
+```{r}
+#read raw data
+USHS  <-  read.csv("daF3224e.csv", sep = ";")
+#select reduced set of variables into a new data set
+USHSpart  <-  USHS  %>% 
+  select(
+    fsd_id,
+    k1, # age
+    k2, # gender (1=male, 2=female, 3=not known/unspecified), NA (missing)
+    bv1, # university (from register), see label info! (40 different codes)
+    bv3, # field of study (from register), various codes
+    bv6, # higher educ institution (0=uni applied sciences, 1=university)
+    k7, # learning disability
+    k8_1:k8_4, # current well-being
+    k9_1:k9_30, # symptoms (past month), skip 31 ("other") due missingness
+    k11a, k11b, # height (cm) a=male, b=female
+    k12a, k12b, # weight (kg) a=male, b=female
+    k13, # what to you think of your weight? (1=under,5=over)
+    k14:k20, # various questions (mostly yes/no)
+    k21_1:k21_9, # various things in life (obs: originally wrong scale! "3" -&gt; NA!)
+    k22_1:k22_10, # how often (felt various things) (obs: 2 &amp; 3 should be inversed! see quest.)
+    k23:k34, # General Health Questionnaire (1-4, directions already OK)
+   k95_1:k95_18) # (end of select!) 
+
+```
+
+**2.2 Variable recreation and generation<br />**
+
+&emsp;&emsp;In this section, I first generated height, weight, age and gender variables. Considering height and weight are better interpreted by referencing each other, I  then generated a Body Mass Index (BMI) variable that merges the pair using the well-accepted formula: 
+$$
+BMI=\frac{Weight (kg)}{Height (m)^{2}}
+$$
+Next, I  generated a new categorical variable by slicing BMI into underweight (<18.5), normal weight(~25), overweight(~30) and obese(>30). Previous studies have found that BMI is a good gauge of risk for diseases that can occur with more body fat, indicating the higher our BMI, the higher our risk for certain diseases such as heart disease, high blood pressure, type 2 diabetes, gallstones, breathing problems, and certain cancers. As such, it would be interesting to explore its relation with Finland student's general health, dietary status and feeling about study. 
+
+```{r}
+# Recreate height, weight, age and gender variables
+USHSv2  <-  USHSpart  %>% 
+  mutate(height = if_else(is.na(k11a), k11b, k11a), #merge height variables of two sexes into one
+         weight = if_else(is.na(k12a), k12b, k12a), #merge weight variables of two sexes into one
+         gender = k2  %>%  factor()  %>%  fct_recode("Male" = "1",
+                                                 "Female" = "2",
+                                                 "Not known" = "3"), #add variable name and level label to gender
+         age = k1  %>%  
+           factor()  %>%  
+           fct_recode("19-21" = "1", "22-24" = "2", "25-27" = "3", 
+                      "28-30" = "4", "31-33" = "5", "33+" = "6"))#add variable name and level label to age
+
+# Generate BMI(body mass index) and BMI.factor(4 categories)
+USHSv2 <- USHSv2 %>% 
+  mutate(BMI = weight/(height/100)^2) # adopting the formula of BMI
+
+USHSv2 <- USHSv2 %>% 
+  mutate(BMI.factor = BMI %>%  #turn BMI into factor and add labels(underweight:<18.5,                                                   #normal weight: ~25, overweight: ~30; obese: >30)
+                    cut(breaks=c(1,18.5,25,30,100), include.lowest = T) %>% 
+                    fct_recode("Underweight" = "[1,18.5]", 
+                               "Normal weight" = "(18.5,25]",
+                               "Overweight" = "(25,30]",
+                               "Obese" = "(30,100]") %>% 
+                    ff_label("BMI ranges"))
+
+USHSv2[, c(42:45)] <- list(NULL) #  I got gender. K11a~k12b were removed.
+
+USHSv2 %>% 
+  select(height, weight, age, gender, BMI, BMI.factor) %>% 
+  head %>%  
+  knitr::kable() # examine the data #sum(is.na(USHSv2$k1)) #apply(USHSv2, 2, function(x)sum(is.na(x))) %>% tidy()#examine NAs for each variable
+unique(USHSv2$k21_1)
+```
+
+**2.3 data cleansing<br />**
+
+&emsp;&emsp;In item k21(k21_1 to k21_9), the choice "difficult to say" was assigned a value of 3, which could be misleading since these were ordinal variables where 3 indicated a specific strength instead of NA. In this section, this was corrected by converting 3 to NA.
+
+```{r}
+#have a look at the unique values in k21_1 through k21_9
+USHSv2 %>% 
+  select(starts_with(("k21"))) %>% apply(.,2, function(x)unique(x))%>% knitr::kable()
+```
+
+&emsp;&emsp;Finding: the value 3(which I want to convert to NA) is present now
+
+```{r}
+#Convert the value 3 in k21_1 to k21_9 to NA
+USHSv2 <- USHSv2 %>% 
+  mutate(across(starts_with("k21"), ~replace(., . == 3, NA)))
+
+#have a look at the unique values in k21_1 through k21_9 in the updated data set
+USHSv2 %>% select(starts_with(("k21"))) %>% 
+  apply(.,2, function(x)unique(x)) %>% knitr::kable()
+```
+
+&emsp;&emsp;Finding: 3s were successfully replaced.
+
+**2.4 data inspecting<br />**
+
+&emsp;&emsp;In this section, missing values of all the variables were inspected. 
+```{r}
+#have a look at the  NAs in each column
+ncol(USHSv2)#get the number of columns
+USHSv2 %>%  select(1:25) %>% vis_miss() 
+USHSv2 %>%  select(26:50) %>% vis_miss()
+USHSv2 %>%  select(51:75) %>% vis_miss()
+USHSv2 %>%  select(76:104) %>% vis_miss() #visualizing the NAs. To get a clear view, make 4 pictures
+
+#calculating the percent of NAs throughout k11a to k12b
+```
+&emsp;&emsp;Findings were variables k1, k7, and k9_1~k9_3 suffered from quite a number of NAs, suggesting a quantitative inspection.
+
+```{r}
+#a closer look of the identified variables
+USHSv2 %>%  select(k1,k7,k9_1:k9_30) %>% vis_miss()
+#
+USHSv2 %>% select (k1,k7,k9_1:k9_30) %>% 
+  apply(.,2,function(x)sum(is.na(x))/nrow(.)) %>% 
+  tidy
+```
+
+
+&emsp;&emsp;Findings were k1 (6.7% NAs), k7(4.1% NAs), k9_1 (3.1% NAs), k9_3 (3.0% NAs), k9_5 (4.3% NAs), k9_8 (6.5%), 9_10 (5.0% NAs), 9_13 (5.1 NAs), 9_24 (6.3% NAs), 9_25 (6.5% NAs) and 9_26 (5.9% NAs) were actually acceptable in the terms of NA proportion. Other variables were with NA proportion＞7%， with some of them reaching 12%, suggesting possible bias such as floor effect. Analysis of k9 should be extremely careful. 
+
+**2.4 Variable selecting <br />**
+
+&emsp;&emsp;In this section, variables for general heath k23~k34 were selected into a new data set USHSghq for factor analysis #1. Variables k95_1~k95_18 were selected into a new data set USHSstu for factor analysis #2.
+
+```{r}
+#k23~k34 were selected into a new data set USHSghq for factor analysis #1
+USHSghq <- USHSv2 %>% select(k23:k34)
+USHSghq %>% head()
+USHSghq%>% apply(2, function(x)unique(x))
+#k95_1~k95_18 were selected into a new data set USHSstu for factor analysis #2
+USHSstu <- USHSv2 %>% select(k95_1:k95_18)
+USHSstu %>% apply(2, function(x)unique(x))
+```
+
+## Analysis 1:  Factor analysis of general health questionnaire
+
+
+**1. Analysis <br />**
+
+**1.1 Descriptive statistics for variables <br />**
+
+&emsp;&emsp;In this section, descriptive statistics was done for each variable of USHSghq. 
+
+```{r}
+#have a look at the unique values in k23~k34
+USHSghq %>% 
+  apply(., 2, function(x)unique(x))%>%
+  knitr::kable()
+```
+
+&emsp;&emsp;Findings were all variables contain values of 1,2,3,4 and NA.
+
+```{r}
+#visualizing the number of values for each item
+longv1 <- USHSv2 %>%  #There are two patterns of choices in k23:k34. Select 
+                      #items of pattern one and convert them to long format
+  select(k24, k27, k28, k31, k32, k33) %>%  
+  pivot_longer(everything(), names_to = "item", values_to = "score") 
+p1 <- longv1 %>%  #plot bar charts for the number of each pattern one choice 
+                  #for each item
+  ggplot (aes(x= factor(score), fill = score))+
+  geom_bar() +
+  facet_wrap(~item)+
+  theme_minimal()+
+  xlab("1=not at all; 2=no more than usual;    
+       3=rather more than usual; 4=much more than usual")+ #choices of pattern 1
+  theme(legend.position ="none")
+longv2 <- USHSv2 %>% #There are two patterns of choices in k23:k34. Select 
+                      #items of pattern two and convert them to long format
+  select(k23, k25, k26, k29, k30, k34) %>% 
+  pivot_longer(everything(), names_to = "item", values_to = "score") 
+p2 <- longv2 %>%  #plot bar charts for the number of each pattern tow choice  
+                  #for each item
+  ggplot (aes(x= factor(score), fill = score))+
+  geom_bar() +
+  facet_wrap(~item)+
+  theme_minimal()+
+  xlab("1=more so than usual; 2=same as usual;  
+       3=less so than usual; 4=much less than usual")+ #choices of pattern 2
+  theme(legend.position ="none")
+p1/p2
+```
+
+&emsp;&emsp;The findings were "Not at all" and "No more than usual" was the most frequent two choices for item k24, k27, k28, k31, k32 and k33, indicating most respondents were in a stable and healthy state.
+
+&emsp;&emsp;"Same as usual" was the most frequent choice for item k23, k25, k26, k29, k30 and k34, indicating most respondents were in a stable and healthy state.
+
+```{r}
+#Examining if missing values are dependent on any demographic variables
+long3 <- USHSv2 %>%  # convert health-related variables to long format
+  select (fsd_id, gender, BMI.factor, k23:k34) %>% 
+  pivot_longer(k23:k34, names_to = "item", values_to = "score") %>% 
+  filter(is.na(score)) 
+p1 <- long3 %>%  # plot stacked bar chart of NA frequencies base on 
+                 #gender for each item
+  ggplot(aes(x = item, fill = gender))+
+  geom_bar(position = position_fill(reverse = T))+
+  theme(legend.position = "none", axis.text = element_text(size = 6), 
+        plot.title = element_text(vjust = 1), 
+        axis.title.y = element_text(size = 9))+
+  labs(title = "Percentage of NAs by gender", 
+       y = "Percentage of NAs", x ="", subtitle = "uncorrected")
+p2 <- long3 %>% # plot stacked bar chart of percentage of NA 
+                #frequencies base on gender for each item
+  ggplot(aes(x = item, fill = gender))+
+  geom_bar(position = position_stack(reverse = T))+
+  theme(legend.position = "none", axis.text = element_text(size = 6), 
+        axis.title.y = element_text(size = 9))+
+  labs(title = "Number of NAs by gender", 
+       y = "Number of NAs", x = "Item", subtitle = "uncorrected")
+
+#The following codes are  discarded since they didn't correct for sample size
+#p3 <- long3 %>% # a set of plot bar charts of NA frequencies base on 
+                # gender, each chart for one item.
+#  ggplot(aes(x = gender, fill = gender))+
+#  geom_bar()+
+#  ylab("number of NAs")+
+#  facet_wrap(~item)+
+#  theme(axis.text = element_text(size =5, angle =45))
+#p3 <- Igender_cor %>% 
+#  ggplot(aes(x = gender, y = n, fill = gender))+
+#  geom_col()+
+#  facet_wrap(~item)+
+#  theme(axis.text = element_text(size = 5, angle = 45))+
+#  labs(title = "Number of NAs by gender", 
+#       subtitle ="corrected for sample size",
+#       y = "Corrected number", x = "Gender")
+
+Igender <- long3 %>% count(item, gender)#create contingency table for item&gender
+Igender_cor <- Igender %>%  #correct for effect of sample size by dividing male 
+                            #NA number with the sample size of male(n = 1068),  
+                            #and female NA number with that of female(n = 2022),
+  mutate (score = case_when(gender == "Male" ~ n/1068,
+                            gender == "Female" ~ n/2022,
+                            is.na(gender) ~ n/20)) %>% filter (!is.na(gender))
+
+Igender_cor
+p3 <- Igender_cor %>% 
+  ggplot(aes(x = item, y = score, fill = gender))+
+  geom_col(position = position_fill())+
+  theme(axis.text = element_text(size = 5),
+        axis.text.x = element_text (angle = 45))+
+  labs(title = "Percent of NAs by gender", 
+       subtitle ="corrected for sample size",
+       y = "Corrected number of NAs", x = "Item") +
+  guides(fill = guide_legend(title = "Gender"))
+p1/p2|p3
+```
+ 
+ &emsp;&emsp;The findings were females givng NA answers were much more than males (see pictures on the left). However, we should bring into consideration the fact the female respondents were around two times the umber of males. Hence, I corrected the number by diving the number of each subgroup of NAs by the sample size of subgroups(male and female), obtaining the graph corrected for sample size. See picture on the right. It demonstrated that though the proportion of females giving NA answers is still larger than males, the difference becomes much less pronounced. Still, attention should be given to items k23 and k25, which around 80% of NAs were from females, as well as items k27, which around 70% NAs were from males, indicating bias such as floor bias might exist in these items. 
+ 
+```{r}
+
+p4 <- long3 %>% ggplot(aes(x = item, fill = BMI.factor))+
+  geom_bar(position = position_fill(reverse = T))+
+  ylab("Percent of NAs")+
+  theme(legend.position = "none", axis.text = element_text(size = 6), 
+        axis.title.y = element_text (size = 9), 
+        plot.title = element_text (vjust = 1))+
+  labs(title = "Percent of NAs by BMI", x= "", subtitle = "uncorrected")
+
+p5 <- long3 %>% ggplot(aes(x = item, fill = BMI.factor))+
+  geom_bar(position = position_stack(reverse = T))+
+  ylab("Number of NAs")+
+  theme(legend.position = "none", axis.text = element_text(size = 6),
+        axis.title.y = element_text (size = 9))+
+  labs(title = "Number of NAs by BMI", x = "Item", subtitle = "uncorrected")
+
+long3 %>% count(BMI.factor)
+IBMI <- long3 %>% count(item, BMI.factor)#create contingency table for item&gender
+IBMI <- IBMI %>% rename(score = n)
+IBMI_cor <- IBMI %>%  #correct for effect of sample size by dividing number of  
+                            #normal weight respondents with the sample size of,  
+                            #it(n = 118). Apply the same idea to other levels.
+
+ mutate (score_corrected = case_when(BMI.factor == "Normal weight" ~ score/118,
+                                             BMI.factor == "Overweight" ~ score/39,
+                                             BMI.factor == "Obese" ~ score/25,
+                                             BMI.factor == "Underweight" ~ score/1,
+                                             is.na(BMI.factor) ~ score/31))
+
+IBMI_cor
+p6 <- IBMI_cor %>% 
+  ggplot(aes(x = item, y = score_corrected, fill = BMI.factor))+
+  geom_col(position = position_fill(reverse = T))+
+  theme(axis.text = element_text(size = 5), 
+        axis.text.x = element_text(angle = 45))+
+  labs(title = "Percent of NAs by BMI", 
+       subtitle ="corrected for sample size",
+       y = "Corrected number of NAs", x = "Item") +
+  guides(fill = guide_legend(title = "BMI"))
+p4/p5|p6
+
+```
+
+ &emsp;&emsp;Respondents with normal weight gave most NA answers (see pictures on the left). After sample size correction (see picutre on right), the NA answers from different BMI groups became more equally distribute across each subcategory. However, the observation is inconclusive due to a large proportion lacking BMI information. 
+```{r}
+#descriptive statistics for general health questions. 
+describe(USHSghq)
+```
+
+&emsp;&emsp;Findings were the mean and median were very close to each other. Standard deviations were more varied, indicating some items have different filling out pattern with others. 
+
+```{r}
+longv4<- USHSghq %>%  # convert health-related variables to long format
+  pivot_longer(everything(), names_to = "Item", values_to = "Score")
+longv4 %>% ggplot(aes(x = Score, fill = Score)) +
+  geom_histogram(binwidth=0.9) +
+  facet_wrap(~Item)
+```
+
+&emsp;&emsp;Findings were the assumption of multivariate normality was severely violated (at least half of the variables were not normal), see histogram above. This indicated I might have to exclude maximum likelihood for factoring due to its poor validity for non-normal data. 
+
+
+**1.2 Factorability of the items <br />**
+
+&emsp;&emsp;Next, the factorability of the items was examined. Several well-recognized criteria for the factorability of a correlation were used. 
+```{r}
+#correlation to examine the factorability
+c_matrix <- cor.plot(USHSghq, method = "spearman")
+
+#preparing USHSghq with categorical data 
+USHSghq_more <- USHSghq %>% mutate (fsd_id = USHSv2$fsd_id, gender = USHSv2$gender, BMI.factor = USHSv2$BMI.factor, age = USHSv2$age) %>% select (fsd_id, everything())
+```
+
+&emsp;&emsp;It was observed that all of the 12 items correlated at least 0.4 with at least one other item, suggesting good factorability.
+
+```{r}
+#KMO
+KMO(c_matrix) 
+```
+
+&emsp;&emsp;The Kaiser-Meyer-Olkin measure of sampling adequacy was .93, indicating marvelous adequacy according to Kaiser (1975).
+
+```{r}
+cortest.bartlett(c_matrix, nrow(USHSghq))
+```
+&emsp;&emsp;Bartlett’s test of sphericity was significant (χ2 (66) = 15570.3, p < .05), suggesting that the null hypothesis that our matrix be equal to an identity matrix was objected and hence good factorability. 
+
+
+
+**1.3 Estimating factor structure **
+
+&emsp;&emsp;Next, the number of factors was estimated. Several well-recognized criteria for exploring factor structure solution were used. 
+
+```{r}
+
+# Parallel analysis and scree plot
+fa.parallel(USHSghq, fa = "fa", fm = "ml", plot = T) 
+# very simple structure and BIC
+nfactors(c_matrix, n=3, rotate = "oblimin", fm = "pa", n.obs=12)
+#vss(c_matrix,n=5, rotate = "oblimin", fm = "pa", n.obs=12)
+
+```
+&emsp;&emsp;The parallel analysis and scree plot (showing 4 factors above eigen-values of simulated data ) based on correlation matrix suggested 4-factor structure, while the VSS was favourable to a uni-dimensional interpretation.Results from the VSS analysis also point to the optimal number of one factors, this was further consolidated by both Velicer MAP and SABIC, both suggesting a 1-factor solution. 
+
+**1.4 Presetting parameters **
+
+I loaded the variables on 4 factors based on the result of parallel analysis. I also tested a 3 factors solution for exercise purpose, albeit no mathematical foundation supporting to do it. Oblimin rotation will be adopted because of the fact that dimensions of health situations were usually highly correlated and the hand-on-exercise examining a 2 factors solution has seen a correlation of 0.75 between the factors. I assumed that there was some latent construct called "general health" that is influencing how people answer these questions, and hence principle axis factoring (PAF) was adopted instead of principle component analysis (PCA; on other hand, PCA is orthogonal by nature).Since the assumption of multivariate normality is severely violated, I also did not adopt maximum likelihood factoring. 
+
+**1.4 Factor analysis **
+```{r}
+#Examining the 4 factors solution
+fa4 <- fa(USHSghq, nfactors = 4, rotate = "oblimin", fm = "pa", scores = "regression")
+
+# draw a diagram of the factor model (measurement model):
+fa.diagram(fa4, cut = 0, digits =2, main = "Factor Analysis, Oblimin rotation")
+
+#print the results of analysis
+print(fa4, digits = 2, sort = T)
+print(fa4$loadings,cutoff = 0.3, sort=TRUE)
+summary(fa4)
+prop.table(fa4$values) #how much variance explained
+
+```
+
+```{r}
+#Examining the 4 factors solution
+fa3 <- fa(USHSghq, nfactors = 3, rotate = "oblimin", fm = "pa", scores = "regression")
+
+# draw a diagram of the factor model (measurement model):
+fa.diagram(fa3, cut = 0, digits =2, main = "Factor Analysis, Oblimin rotation")
+
+#print the results of analysis
+print(fa3, digits = 2, sort = T)
+print(fa3$loadings,cutoff = 0.3, sort=TRUE)
+prop.table(fa3$values)
+```
+
+&emsp;&emsp;Solutions for three and four factors were each examined using oblimin rotations of the factor loading matrix.Correlaion coefficients among the factors in both solutions ranges from 0.48 to 0.68, consolidating the appropriateness of oblimin rotaion. Although the number of primary loading were sufficient and roughly equal for both solutions, the four factor solution, which explained 81.40% of the variance, was preferred because of: (a) hand-on-exercise found a 2 factor solution did not provide sufficient granularity for interpreting the structure; (b) the ‘leveling off’ of eigen values on the scree plot after four factors; and (c) the insufficient number of primary loadings and difficulty of interpreting 3 factor structure from medical perspective. 
+
+**1.5 conclusion of factor analysis**
+&emsp;&emsp;In the four factor structure I finally adopted, items k31, k32, k33 and k28 comprising the first factor, capturing "Social well-being"; items k25, k26, k23 and k30 comprising the second factor, capturing "social engagement"; items k34 and k29 comprising the third factor, capturing "mental well-being"; and items k27 and k24 comprising the fourth factor, capturing "emotional well-being".
+
+## Analysis 2:  Factor analysis of study burnout questionnaire
+
+
+**1. Analysis <br />**
+
+**1.1 Descriptive statistics for variables <br />**
+
+&emsp;&emsp;In this section, descriptive statistics was done for each variable of USHSghq. 
+
+```{r}
+#have a look at the unique values in k23~k34
+USHSstu %>% 
+  apply(., 2, function(x)unique(x))%>%
+  knitr::kable()
+```
+
+```{r}
+#adapting the variable names for better displaying effect
+USHSstu <- USHSstu %>% rename(k95_01 = k95_1, k95_02 = k95_2, k95_03 = k95_3, k95_04 = k95_4, k95_05 = k95_5, k95_06 = k95_6, k95_07 = k95_7, k95_08 = k95_8, k95_09 = k95_9)
+
+#generate two subsets of data containing negative-wording items (01~09) and postive-wording items (10~18), respectively
+slongv1 <- USHSstu %>% select (k95_01:k95_09) %>% 
+  pivot_longer(everything(), names_to = "item", values_to = "score") 
+
+slongv2 <- USHSstu %>% select (k95_10:k95_18) %>% 
+  pivot_longer(everything(), names_to = "item", values_to = "score") 
+```
+
+```{r}
+#visualizing the number of values for negative-wording items
+slongv1 %>%  #plot bar charts for the number of each pattern one choice 
+                  #for each item
+  ggplot (aes(x= factor(score), fill = score))+
+  geom_bar() +
+  facet_wrap(~item)+
+  theme_get()+
+  xlab("1=Totally disagree; 2=Disagree;3=Partly disagree; 4=Partly agree; 5=Agree; 6=Totally agree")+ 
+  ggtitle("Distribution of choices for negative-wording items under k95")+
+  theme(legend.position ="none", axis.title.x = element_text (size = 9, face = "bold"), axis.text.x = element_text (size = 6, vjust = 2), strip.text = element_text(size = 8, face = "bold", vjust = 0.5), axis.ticks = element_blank(), plot.title = element_text (face = "bold")) 
+```
+
+&emsp;&emsp;The findings were "totally disagree" was the most frequent two choices, followed by "disagree", indicating most students were not experiencing study burnout in dimensions these items cover. Besides, the data were mostly skewed towards left-side. This indicated care should be taken in considering maximum likelihood factoring. 
+
+```{r}
+slongv2 %>%  #plot bar charts for the number of each pattern one choice 
+                  #for each item
+  ggplot (aes(x= factor(score), fill = score))+
+  geom_bar() +
+  facet_wrap(~item)+
+  theme_get()+
+  xlab("1=Totally disagree; 2=Disagree;3=Partly disagree; 4=Partly agree; 5=Agree; 6=Totally agree")+ 
+  ggtitle("Distribution of choices for postive-wording items under k95")+
+  theme(legend.position ="none", axis.title.x = element_text (size = 9, face = "bold"), axis.text.x = element_text (size = 6, vjust = 2), strip.text = element_text(size = 8, face = "bold", vjust = 0.5), axis.ticks = element_blank(), plot.title = element_text (face = "bold")) 
+```
+
+&emsp;&emsp;The findings were "partly agree" was the most frequent two choices, followed by "agree" and "partly disagree", indicating most students were experiencing little to none study burnout in the dimensions these items cover. The possibility of modesty bias towards weak agreement in facing of positive descriptions should also be considered (this could explain why in negative-wording items 1~9 I did not run into such pattern).Besides, the data were mostly normally distributed, indicating positive wording might be good at eliciting a gradient of state changes. 
+
+```{r}
+#Examining if missing values are dependent on any demographic variables
+slongv3 <- USHSv2 %>%  # convert health-related variables to long format
+  select (fsd_id, gender, BMI.factor, k95_1:k95_18) %>% 
+  pivot_longer(k95_1:k95_18, names_to = "item", values_to = "score") %>% 
+  filter(is.na(score)) 
+sp1 <- slongv3 %>%  # plot stacked bar chart of NA frequencies base on 
+                 #gender for each item
+  ggplot(aes(x = item, fill = gender))+
+  geom_bar(position = position_fill(reverse = T))+
+  theme(legend.position = "none", axis.text = element_text(size = 6), 
+        plot.title = element_text(vjust = 1), 
+        axis.title.y = element_text(size = 9), axis.text.x = element_text(angle =45, vjust = 0.7))+
+  labs(title = "Percentage of NAs by gender", 
+       y = "Percentage of NAs", x ="", subtitle = "uncorrected")
+sp2 <- slongv3 %>% # plot stacked bar chart of percentage of NA 
+                #frequencies base on gender for each item
+  ggplot(aes(x = item, fill = gender))+
+  geom_bar(position = position_stack(reverse = T))+
+  theme(legend.position = "none", axis.text = element_text(size = 6), 
+        axis.title.y = element_text(size = 9), 
+        axis.text.x = element_text(angle =45, vjust = 0.7))+
+  labs(title = "Number of NAs by gender", 
+       y = "Number of NAs", x = "Item", subtitle = "uncorrected")
+
+#The following codes are  discarded since they didn't correct for sample size
+#p3 <- long3 %>% # a set of plot bar charts of NA frequencies base on 
+                # gender, each chart for one item.
+#  ggplot(aes(x = gender, fill = gender))+
+#  geom_bar()+
+#  ylab("number of NAs")+
+#  facet_wrap(~item)+
+#  theme(axis.text = element_text(size =5, angle =45))
+#p3 <- Igender_cor %>% 
+#  ggplot(aes(x = gender, y = n, fill = gender))+
+#  geom_col()+
+#  facet_wrap(~item)+
+#  theme(axis.text = element_text(size = 5, angle = 45))+
+#  labs(title = "Number of NAs by gender", 
+#       subtitle ="corrected for sample size",
+#       y = "Corrected number", x = "Gender")
+
+sIgender <- slongv3 %>% count(item, gender)#create contingency table for item&gender
+sIgender_cor <- sIgender %>%  #correct for effect of sample size by dividing male 
+                            #NA number with the sample size of male(n = 1068),  
+                            #and female NA number with that of female(n = 2022),
+                            #sIgender mean study-burnout item/gender 
+                            #sIgender_cor means study-burnout item/gender corrected
+  mutate (score = case_when(gender == "Male" ~ n/1068,
+                            gender == "Female" ~ n/2022,
+                            is.na(gender) ~ n/20)) %>% filter (!is.na(gender))
+
+
+sp3 <- sIgender_cor %>% 
+  ggplot(aes(x = item, y = score, fill = gender))+
+  geom_col(position = position_fill())+
+  theme(axis.text = element_text(size = 5),
+        axis.text.x = element_text (angle = 45))+
+  labs(title = "Percent of NAs by gender", 
+       subtitle ="corrected for sample size",
+       y = "Corrected number of NAs", x = "Item") +
+  guides(fill = guide_legend(title = "Gender"))
+sp1/sp2|sp3
+```
+ 
+ &emsp;&emsp;The findings were females givng NA answers were much more than males (see pictures on the left). However, after correcting the number of each subgroup (male and female) by its sample size,the distribution of NAs became almost consistent across gender. See picture on the right. 
+ 
+```{r}
+
+sp4 <- slongv3 %>% ggplot(aes(x = item, fill = BMI.factor))+
+  geom_bar(position = position_fill(reverse = T))+
+  ylab("Percent of NAs")+
+  theme(legend.position = "none", axis.text = element_text(size = 6), 
+        axis.title.y = element_text (size = 9), 
+        plot.title = element_text (vjust = 1),
+        axis.text.x = element_text(angle =45, vjust = 0.7))+
+  labs(title = "Percent of NAs by BMI", x= "", subtitle = "uncorrected")
+
+sp5 <- slongv3 %>% ggplot(aes(x = item, fill = BMI.factor))+
+  geom_bar(position = position_stack(reverse = T))+
+  ylab("Number of NAs")+
+  theme(legend.position = "none", axis.text = element_text(size = 6),
+        axis.title.y = element_text (size = 9),
+        axis.text.x = element_text (angle = 45, vjust = 0.7))+
+  labs(title = "Number of NAs by BMI", x = "Item", subtitle = "uncorrected")
+
+slongv3 %>% count(BMI.factor)
+sIBMI <- slongv3 %>% count(item, BMI.factor)#create contingency table for item&gender
+sIBMI <- sIBMI %>% rename(score = n)
+sIBMI_cor <- sIBMI %>%  #correct for effect of sample size by dividing number of  
+                            #normal weight respondents with the sample size of,  
+                            #it(n = 118). Apply the same idea to other levels.
+
+ mutate (score_corrected = case_when(BMI.factor == "Normal weight" ~ score/118,
+                                             BMI.factor == "Overweight" ~ score/39,
+                                             BMI.factor == "Obese" ~ score/25,
+                                             BMI.factor == "Underweight" ~ score/1,
+                                             is.na(BMI.factor) ~ score/31))
+
+sp6 <- sIBMI_cor %>% 
+  ggplot(aes(x = item, y = score_corrected, fill = BMI.factor))+
+  geom_col(position = position_fill(reverse = T))+
+  theme(axis.text = element_text(size = 5), 
+        axis.text.x = element_text(angle = 45, vjust= 0.5))+
+  labs(title = "Percent of NAs by BMI", 
+       subtitle ="corrected for sample size",
+       y = "Corrected number of NAs", x = "Item") +
+  guides(fill = guide_legend(title = "BMI"))
+sp4/sp5|sp6
+
+```
+
+ &emsp;&emsp;Respondents with normal weight gave most NA answers (see pictures on the left). After sample size correction (see picutre on right), the NA answers from different BMI groups became more equally distribute across each subcategory. However, the observation is inconclusive due to a large proportion lacking BMI information. Also note that in the bar graph on the right, underweight respondents seemed to comprise the majority of NAs across a couple of items, but I decided to ignore it since the number of underweight respondents were quite small (n=20), leading to overestimation by correction. 
+ 
+```{r}
+#descriptive statistics for general health questions. 
+describe(USHSstu, IQR = T)
+?describe 
+```
+
+&emsp;&emsp;Findings were the median of score for positive/negative wording items were more close to its item-group member and IQRs were consistent within some subgroups of items and were varied across these subgroups, indicating some items have different filling out pattern. Means were less varied across all items, but due to the non-normality for half of the item results, here mean and standard deviation would be less convincing than median and IQR. 
+
+**1.2 Factorability of the items <br />**
+
+&emsp;&emsp;Next, the factorability of the items was examined. Several well-recognized criteria for the factorability of a correlation were used. 
+```{r}
+
+#correlation to examine the factorability
+sc_matrix <- cor.plot(USHSstu) # sc_matrix means study-burnout correlation matrix
+
+#preparing HSHSstu data with categorical variables
+USHSstu_more <- USHSstu %>% mutate (fsd_id = USHSv2$fsd_id, gender = USHSv2$gender, BMI.factor = USHSv2$BMI.factor, age = USHSv2$age)
+```
+
+&emsp;&emsp;It was observed that all of the 12 items correlated at least 0.5 with at least one other item, suggesting good factorability.
+
+```{r}
+#KMO
+KMO(sc_matrix) 
+```
+
+&emsp;&emsp;The Kaiser-Meyer-Olkin measure of sampling adequacy was .94, indicating marvelous adequacy according to Kaiser (1975).
+
+```{r}
+cortest.bartlett(sc_matrix, nrow(USHSghq))
+```
+&emsp;&emsp;Bartlett’s test of sphericity was significant (χ2 (66) = 36358.71, p < .05), suggesting that the null hypothesis that our matrix be equal to an identity matrix was objected and hence good factorability. 
+
+
+**1.3 Estimating factor structure **
+
+&emsp;&emsp;Next, the number of factors was estimated. Several well-recognized criteria for exploring factor structure solution were used. 
+
+```{r}
+
+# Parallel analysis and scree plot
+fa.parallel(USHSstu, fa = "fa", fm = "ml", plot = T) 
+# very simple structure and BIC
+nfactors(sc_matrix, n=5, rotate = "oblimin", fm = "pa", n.obs=12)
+#vss(c_matrix,n=5, rotate = "oblimin", fm = "pa", n.obs=12)
+
+```
+
+&emsp;&emsp;The parallel analysis and scree plot (showing 4 factors above eigen-values of simulated data ) based on correlation matrix suggested 4-factor structure, while the VSS was favourable to a 2 factor interpretation by the given complexity peaking at the second factor. This result was echoed by BIC, where the minimum value was achieved with 2 factors. Whereas VSS analysis recommended a 3 factor solution, which was inconsistent with others.
+
+**1.4 Presetting parameters **
+
+&emsp;&emsp;Base on the factor structure exploration, solutions for three, four, five and six factors were each examined using varimax and oblimin rotations of the factor loading matrix. Both rotation was selected since I was not able to presume the relationship between dimensions of study burnout. I assumed that "study burnout" was not a latent construct that is influencing how people answer these questions. Instead, it should be the outcome of the states reflected by the items. Hence principle component analysis was adopted. Since the assumption of multivariate normality is basically violated, I also did not adopt maximum likelihood factoring. 
+
+**1.4 Factor analysis **
+*1.4.1 Examining 2-factor structure*
+```{r}
+# a) orthogonal rotation
+sfa2_var <- fa(USHSstu, nfactors = 2,  #sfa2_var means study factor analysis 2 factors by varimax
+           rotate = "varimax", fm = "ml", scores = "regression") 
+sfa2_var
+fa.diagram(sfa2_var, cut = 0, digits =2, 
+           main = "Factor Analysis, 2-factor structure, Orthogonal rotation")
+
+#b) oblimin rotation
+sfa2_obl <- fa(USHSstu, nfactors = 2,  #sfa2_obl means study factor analysis 2 factors by oblimin
+               rotate = "oblimin", fm = "ml", scores = "regression")
+sfa2_obl
+fa.diagram(sfa2_obl, cut = 0, digits =2, 
+           main = "Factor Analysis, 2-factor structure, Oblimin rotation")
+```
+&emsp;&emsp;The correlation between the 2 factors were weak (r = -0.35), indicating oblimin rotation might be a proper choice theoretically.However, by examining the items under each factor, I found the most possible interpretation for this 2 factor solution is the differnt directions of wording, since factor 1 contain items 1-9, which were negatively worded, and items 10~18 under factor 2 were all positively worded. They should of course be negatively correlated on face value, and, on the other hand, the factoring solution was not sufficiently convincing because it did not capture meaningful dimensions of study burnout. 
+
+```{r}
+#results by varimax rotation
+print(sfa2_var, digits = 2, sort = T)
+print(sfa2_var$loadings,cutoff = 0.3, sort=TRUE)
+summary(sfa2_var)
+prop.table(sfa2_var$values) #how much variance explained
+
+#results by oblimin rotation
+print(sfa2_obl, digits = 2, sort = T)
+print(sfa2_obl$loadings,cutoff = 0.3, sort=TRUE)
+summary(sfa2_obl)
+prop.table(sfa2_obl$values) #how much variance explained
+```
+&emsp;&emsp;Cross-loading was very pronounced by both rotation methods (especially varimax rotation). This indicated we might either remove some items or seek for other factor solutions. This echoed with the fact that this two-factor structure did not provide any meaningful interpretation of dimension of study burnout. 
+
+*1.4.2 Examining 3-factor structure*
+
+```{r}
+# a) orthogonal rotation
+sfa3_var <- fa(USHSstu, nfactors = 3,  #sfa2_var means study factor analysis 2 factors by varimax
+           rotate = "varimax", fm = "ml", scores = "regression") 
+sfa3_var
+fa.diagram(sfa3_var, cut = 0, digits =2, 
+           main = "Factor Analysis, 3-factor structure, Orthogonal rotation")
+
+#b) oblimin rotation
+sfa3_obl <- fa(USHSstu, nfactors = 3,  #sfa2_obl means study factor analysis 2 factors by oblimin
+               rotate = "oblimin", fm = "ml", scores = "regression")
+sfa3_obl
+fa.diagram(sfa3_obl, cut = 0, digits =2, 
+           main = "Factor Analysis, 3-factor structure, Oblimin rotation")
+```
+&emsp;&emsp;The correlation among the 3 factors were weak to moderate (0.18~0.55), not pointing to any rotation method mathematically. Two methods provided factoring results with little difference. The interpretation of this 3-factor structure became easier and more enlightening than the 2-factor solution. By qualitative analysis, I assumed items 3,5,2,6 and 8 captured the dimension of exhaustion (item example: I feel a lack of motivation in my studies and often thinking of giving up); items 7, 1, 9, 4 and 3
+captured sense of pressure (Example: I often have feelings of inadequacy in my studies.); other 9 items together captured sense of accomplishment (Example: I find my studies full of meaning and purpose).
+
+```{r}
+#results by varimax rotation
+print(sfa3_var, digits = 2, sort = T)
+print(sfa3_var$loadings,cutoff = 0.3, sort=TRUE)
+summary(sfa3_var)
+prop.table(sfa3_var$values) #how much variance explained
+
+#results by oblimin rotation
+print(sfa3_obl, digits = 2, sort = T)
+print(sfa3_obl$loadings,cutoff = 0.3, sort=TRUE)
+summary(sfa3_obl)
+prop.table(sfa3_obl$values) #how much variance explained
+```
+&emsp;&emsp;Cross-loading was very pronounced by orthogonal rotation (7 cross-loadings, and 2 of them loading on 3 factors simultaneously), but via oblimin rotation it reduced to an acceptable situation (2 cross-loading items with loadings of 0.31 vs 0.61, and 0.37 vs 0.41 ). This indicated the results by using oblimin rotation should be preferred. 
+
+*1.4.3 Examining 4-factor structure*
+
+```{r}
+# a) orthogonal rotation
+sfa4_var <- fa(USHSstu, nfactors = 4,  #sfa2_var means study factor analysis 2 factors by varimax
+           rotate = "varimax", fm = "ml", scores = "regression") 
+sfa4_var
+fa.diagram(sfa4_var, cut = 0, digits =2, 
+           main = "Factor Analysis, 4-factor structure, Orthogonal rotation")
+
+#b) oblimin rotation
+sfa4_obl <- fa(USHSstu, nfactors = 4,  #sfa2_obl means study factor analysis 2 factors by oblimin
+               rotate = "oblimin", fm = "ml", scores = "regression")
+sfa4_obl
+fa.diagram(sfa4_obl, cut = 0, digits =2, 
+           main = "Factor Analysis, 4-factor structure, Oblimin rotation")
+```
+
+&emsp;&emsp;The correlation among the 4 factors were weak to moderate (0.12~0.55), not pointing to any rotation method mathematically. Two methods provided factoring results with little difference. However, via both of rotation methods, the variables still loaded on only 3 factors instead of 4 factors as we specified, and the factoring was the same with that of the 3-factor solution.
+
+```{r}
+#results by varimax rotation
+print(sfa4_var, digits = 2, sort = T)
+print(sfa4_var$loadings,cutoff = 0.3, sort=TRUE)
+summary(sfa4_var)
+prop.table(sfa4_var$values) #how much variance explained
+
+#results by oblimin rotation
+print(sfa4_obl, digits = 2, sort = T)
+print(sfa4_obl$loadings,cutoff = 0.3, sort=TRUE)
+summary(sfa4_obl)
+prop.table(sfa4_obl$values) #how much variance explained
+```
+&emsp;&emsp;Cross-loadings in this 4-factor solution were very pronounced (worse than the 3-factor solution). Due to fact that it provided same factoring with 3 factor solution, I did not look into it futher.
+
+Solutions for two, three and four factors were each examined using varimax and oblimin rotations of the factor loading matrix. Correlaion coefficients among the factors in all solutions ranges from 0.12 to 0.55, not strongly pointing to the appropriateness of any rotation methods. The three factor solution by oblimin rotation, which explained 68.0% of the variance, was preferred because of: (a) 2-factor solution was hardly interpretable from the perspective of study burnout (b) although eigen values leveled off on the scree plot after four factors, in the analsyis of the four-factor structure, items still loaded on 3 variables; and (c) 2-factor and 4-factor were plagued by cross-loading.
+
+**1.5 conclusion of factor analysis**
+In the 4-factor structure I finally adopted, items k31, k32, k33 and k28 comprising the first factor, capturing "Social well-being"; items k25, k26, k23 and k30 comprising the second factor, capturing "social engagement"; items k34 and k29 comprising the third factor, capturing "mental well-being"; and items k27 and k24 comprising the fourth factor, capturing "emotional well-being".
+*******************************************************************************
+
+**GOOOOOD JOB!!**
+
+In the end, you should be ready to KNIT this document and SUBMIT the result (.html file) as your report of the **Assignment 2** in Moodle. I am completely sure that you learned again a lot! **GRRRRREAT!!!**
+
+discard
+
+USHSghqv2 <- USHSv2 %>% select(k24:k24,k26,k28:k34)
+c_matrix_v2 <- cor.plot(USHSghq)
+fa.parallel(c_matrix_v2, fa = "fa", fm = "ml", plot = T) 
+nfactors(c_matrix_v2, n=5, rotate = "oblimin", fm = "pa", n.obs=12)
+USHSv2
+fa <- USHSv2 %>%
+  select (fsd_id, gender, BMI.factor, k23:k34)
+
+fa_male <- fa %>% filter (gender == "Male") %>% select(k23:k34)
+fa_female <- fa %>% filter (gender == "Female") %>% select(k23:k34)
+
+fa_male_matrix <- cor.plot(fa_male)
+fa_female_matrix <- cor.plot(fa_female)
+
+fa.parallel(fa_male, fa = "fa", fm = "ml", plot =T)
+fa.parallel(fa_female, fa = "fa", fm = "ml", plot =T)
+
+nfactors(fa_male_matrix, n=4, rotate = "oblimin", fm ="pa", n.obs=12)
+nfactors(fa_female_matrix, n=4, rotate = "oblimin", fm ="pa", n.obs=12)
+
+####
+USHSghq_no30 <- USHSghq %>% select(k23:k29,k31:k34)
+c_matrix_v2 <- cor.plot(USHSghq_no30)
+fa4_no30 <- fa(USHSghq_no30, nfactors = 3, rotate = "oblimin", fm = "pa", scores = "regression")
+fa.diagram(fa4_no30, cut = 0, digits =2, main = "Factor Analysis, Oblimin rotation")
+print(fa4_no30, digits = 2, sort = T)
+print(fa4$loadings,cutoff = 0.3, sort=TRUE)
+prop.table(fa4$values)
