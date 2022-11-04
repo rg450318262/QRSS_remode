@@ -403,12 +403,15 @@ part1 <- fin1 %>%
          which(colnames(fin1) == "happy_family"):ncol(.), 
          -starts_with("x")  
          )
+part1 <- part1 %>% mutate(FSD_ID = factor(FSD_ID))
 
 part2 <- finF %>%  select(FSD_ID, gender:YOB)
 
 happyfin <- left_join(part1, part2)
 
 happyfin %>% head
+#convert YOB to number
+happyfin$YOB <- as.character(happyfin$YOB) %>% as.numeric(happyfin$YOB)
 ```
 
 ## 1.4 handle missing data
@@ -790,7 +793,9 @@ happyScores  <-  as.data.frame(
          relationship = PA3,
          productivity= PA4,
          mindfulness = PA5)
-happyScores <- round(happyScores, 2)
+happyScores1 <- round(happyScores[,-6], 2)#round without indexing variable
+happyScores1$FSD_ID <- happyScores[,6]#put indexing variable back
+happyScores <- happyScores1#rounded data+indexing variable 
 #merge the happyScores data set with happyfin
 happyfin  <-  full_join(happyfin, happyScores)
 #inspect
@@ -866,7 +871,6 @@ b. transform relationship
 ```{r}
 #transform relationship
 happyfin$relationship_trans <- 1/(max(happyfin$relationship+1) - happyfin$relationship)
-histogram(happyfin$relationship_trans)
 
 #check the effect of transformation
 before2 <-happyfin %>%  #histogram before
@@ -1104,6 +1108,7 @@ happyfin %>% filter(!gender == "Other")%>%
        title = "Fin's perceived happiness by age",
        caption = "Note: Error bars are 95% CIs")+
   theme(axis.text.x = element_text(angle = 15))
+
 ```
 
 &emsp;&emsp; Fairly happy and Not very happy respondents seem to have significantly different age for males, but not for females and not across other perceived-happiness groups. Some non-linear relationship might be present. Age groups could work better than age as number. As such, __age group (variable "age") rather than raw age will be used as predictor.__ 
@@ -1435,17 +1440,19 @@ happyfin <- happyfin %>%
 
 ```{r}
 # variables that will enter model
-happyfin %>% select(ends_with("enter"))
+happyfin %>% select(ends_with("enter")) %>% glimpse()
 # pass their names to an object
 enter_vars <- happyfin %>% select(ends_with("enter")) %>% colnames()
 
 enter_vars_happy <- happyfin %>% select(if_autonomy_enter:mindfulness_enter) %>% colnames()
+happyfin %>% select(ends_with("enter")) %>% sapply(function(x)nlevels(x))
 ```
 
 
 ```{r}
 #generate the formula for logistic regression
 formula_all_vars <- as.formula(paste('if_feel_happy ~', paste(enter_vars, collapse='+')))
+
 fit_all_vars <- glm(formula_all_vars, family = binomial, data = happyfin)
 summary(fit_all_vars)
 
@@ -1454,6 +1461,58 @@ formula_happy_vars <- as.formula(paste('if_feel_happy ~', paste(enter_vars_happy
 fit_happy_vars <- glm(formula_happy_vars, family = binomial, data = happyfin)
 summary(fit_happy_vars)
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ```{r}
