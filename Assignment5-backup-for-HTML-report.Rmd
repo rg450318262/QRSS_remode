@@ -1440,7 +1440,6 @@ happyfin %>% select(ends_with("enter"))
 enter_vars <- happyfin %>% select(ends_with("enter")) %>% colnames()
 ```
 
-
 ```{r}
 #generate the formula for logistic regression
 formula_all_vars <- as.formula(paste('if_feel_happy ~', paste(enter_vars, collapse='+')))
@@ -1451,7 +1450,6 @@ happyfin %>% select(ends_with("enter")) %>% glimpse
 summary(fit_all_vars)
 
 ```
-
 
 ```{r}
 fit0 <- happyfin %>% 
@@ -1464,7 +1462,6 @@ fit0 %>%
   tidy(conf.int = T, exp = T) %>% datatable() %>% formatRound(columns = c(2:7), digits = 2)
 ```
 
-
 ```{r}
 fit1 <- happyfin %>% 
   glm(if_feel_happy ~ relationship + accomplishment + autonomy + productivity + mindfulness + gender + age + alco + education_basic + education_prof + social_class + employer + work_hour + work_contract, family = binomial, data = .)
@@ -1475,17 +1472,14 @@ fit1 %>%
   tidy(conf.int = T, exp = T) %>% datatable() %>% formatRound(columns = c(2:7), digits = 2)
 ```
 
-
 ```{r}
 glimpse(happyfin)
 ```
-
 
 ```{r}
 with(summary(fit1), 1 - deviance/null.deviance)
 get_labels(happyfin$education_prof)
 ```
-
 
 ```{r}
 dependent <-  "if_feel_happy"
